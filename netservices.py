@@ -65,6 +65,25 @@ def build(bld):
         use=['ntp_obj'])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libntp.a"])
 
+    ttcp_incl = ['ttcp/include']
+    ttcp_obj_incl = []
+    ttcp_obj_incl.extend(ttcp_incl)
+
+    ttcp_source_files = ['ttcp/ttcp.c']
+
+    bld(features='c',
+        target='ttcp_obj',
+        cflags='-g -Wall -O0',
+        includes=' '.join(ttcp_obj_incl),
+        source=ttcp_source_files,
+        )
+
+    bld(features='c cstlib',
+        target='ttcp',
+        cflags='-g -Wall -O0',
+        use=['ttcp_obj'])
+    bld.install_files("${PREFIX}/" + arch_lib_path, ["libttcp.a"])
+
     def install_headers(root_path):
         for root, dirs, files in os.walk(root_path):
             for name in files:
@@ -97,6 +116,17 @@ def build(bld):
                 use='ntp m lwip rtemstest',
                 cflags='-g -Wall -O0',
                 includes=' '.join(ntp_test_incl))
+
+    ttcp_test_incl = []
+    ttcp_test_incl.extend(ttcp_incl)
+    ttcp_test_incl.append('testsuites/')
+
+    bld.program(features='c',
+                target='ttcpshell01.exe',
+                source='testsuites/ttcpshell01/test_main.c',
+                use='ttcp lwip rtemstest',
+                cflags='-g -Wall -O0',
+                includes=' '.join(ttcp_test_incl))
 
 
 def add_flags(flags, new_flags):
