@@ -1115,7 +1115,11 @@ create_wildcards(
 		wildif->flags = INT_UP | INT_WILDCARD;
 		wildif->ignore_packets = (ACTION_DROP == action);
 
+#ifdef __rtems__
+		wildif->fd = open_socket(&wildif->sin, 0, 0, wildif);
+#else
 		wildif->fd = open_socket(&wildif->sin, 0, 1, wildif);
+#endif
 
 		if (wildif->fd != INVALID_SOCKET) {
 			wildipv6 = wildif;
@@ -1166,7 +1170,11 @@ create_wildcards(
 		SET_ADDR4N(&wildif->bcast, INADDR_ANY);
 		SET_PORT(&wildif->bcast, port);
 #endif /* MCAST */
+#ifdef __rtems__
+		wildif->fd = open_socket(&wildif->sin, 0, 0, wildif);
+#else
 		wildif->fd = open_socket(&wildif->sin, 0, 1, wildif);
+#endif
 
 		if (wildif->fd != INVALID_SOCKET) {
 			wildipv4 = wildif;

@@ -339,7 +339,9 @@
 #define GETSOCKNAME_SOCKLEN_TYPE socklen_t
 
 /* Do we have a routing socket (rt_msghdr or rtattr)? */
+#ifndef __rtems__
 #define HAS_ROUTING_SOCKET 1
+#endif
 
 /* via __adjtimex */
 /* #undef HAVE_ADJTIMEX */
@@ -1153,8 +1155,10 @@
 /* Do we have the TIO serial stuff? */
 /* #undef HAVE_TIO_SERIAL_STUFF */
 
+#ifndef __rtems__
 /* Are TrustedBSD MAC policy privileges available? */
 #define HAVE_TRUSTEDBSD_MAC 1
+#endif
 
 /* Define to 1 if the system has the type `uint16_t'. */
 #define HAVE_UINT16_T 1
@@ -1468,6 +1472,9 @@
 
 /* wildcard socket needs REUSEADDR to bind interface addresses */
 /* #undef OS_NEEDS_REUSEADDR_FOR_IFADDRBIND */
+#ifdef __rtems__
+#define OS_NEEDS_REUSEADDR_FOR_IFADDRBIND
+#endif
 
 /* Do we need to override the system's idea of HZ? */
 #define OVERRIDE_HZ 1
@@ -1680,7 +1687,11 @@ typedef unsigned int	uintptr_t;
 /* configure --enable-ipv6 */
 #define WANT_IPV6 1
 
+#ifdef __rtems__
+#include <machine/endian.h>
+#else
 #include <machine/_endian.h>
+#endif
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
