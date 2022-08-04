@@ -36,9 +36,34 @@ def removeprefix(data, prefix):
 
 
 def build(bld):
+    ntp_source_files = []
+    ntp_incl = []
 
     arch_lib_path = rtems.arch_bsp_lib_path(bld.env.RTEMS_VERSION,
                                             bld.env.RTEMS_ARCH_BSP)
+
+    with open('ntp-file-import.json', 'r') as cf:
+        files = json.load(cf)
+        for f in files['source-files-to-import']:
+            ntp_source_files.append(os.path.join('./sebhbsd', f))
+        for f in files['header-paths-to-import']:
+            ntp_incl.append(os.path.join('./sebhbsd', f))
+
+    ntp_obj_incl = []
+    ntp_obj_incl.extend(ntp_incl)
+
+    bld(features='c',
+        target='ntp_obj',
+        cflags='-g -Wall -O0 -DHAVE_CONFIG_H=1',
+        includes=' '.join(ntp_obj_incl),
+        source=ntp_source_files,
+        )
+
+    bld(features='c cstlib',
+        target='ntp',
+        cflags='-g -Wall -O0 -DHAVE_CONFIG_H=1',
+        use=['ntp_obj'])
+    bld.install_files("${PREFIX}/" + arch_lib_path, ["libntp.a"])
 
     def install_headers(root_path):
         for root, dirs, files in os.walk(root_path):
@@ -55,6 +80,8 @@ def build(bld):
                                      subpath),
                         os.path.join(path, name)
                     )
+
+    [install_headers(path) for path in ntp_incl]
 
     lib_path = os.path.join(bld.env.PREFIX, arch_lib_path)
     bld.read_stlib('lwip', paths=[lib_path])
