@@ -87,6 +87,17 @@ def build(bld):
     bld.read_stlib('lwip', paths=[lib_path])
     bld.read_stlib('rtemstest', paths=[lib_path])
 
+    ntp_test_incl = []
+    ntp_test_incl.extend(ntp_incl)
+    ntp_test_incl.append('testsuites/')
+
+    bld.program(features='c',
+                target='ntp01.exe',
+                source='./testsuites/ntp01/test_main.c',
+                use='ntp m lwip rtemstest',
+                cflags='-g -Wall -O0',
+                includes=' '.join(ntp_test_incl))
+
 
 def add_flags(flags, new_flags):
     for flag in new_flags:
