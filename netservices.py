@@ -105,6 +105,7 @@ def build(bld):
     lib_path = os.path.join(bld.env.PREFIX, arch_lib_path)
     bld.read_stlib('lwip', paths=[lib_path])
     bld.read_stlib('rtemstest', paths=[lib_path])
+    bld.read_stlib('telnetd', paths=[lib_path])
 
     ntp_test_incl = []
     ntp_test_incl.extend(ntp_incl)
@@ -127,6 +128,16 @@ def build(bld):
                 use='ttcp lwip rtemstest',
                 cflags='-g -Wall -O0',
                 includes=' '.join(ttcp_test_incl))
+
+    test_app_incl = []
+    test_app_incl.append('testsuites/')
+
+    bld.program(features='c',
+                target='telnetd01.exe',
+                source='testsuites/telnetd01/init.c',
+                use='telnetd lwip rtemstest',
+                cflags='-g -Wall -O0',
+                includes=' '.join(test_app_incl))
 
 
 def add_flags(flags, new_flags):
