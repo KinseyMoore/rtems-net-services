@@ -30,3 +30,10 @@ git submodule update
 
 More `waf` arguments can be found by using:
 `./waf --help`
+
+Further Build Information
+-------------------------
+
+The BSPs configured to build may be specified on the waf configure command line
+with --rtems-bsps or they may be configured in config.ini as in RTEMS. The
+command line option will override the BSPs configured in config.ini.

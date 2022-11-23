@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # RTEMS Project (https://www.rtems.org/)
 #
@@ -27,6 +29,11 @@
 
 from __future__ import print_function
 
+try:
+    import configparser
+except:
+    import ConfigParser as configparser
+
 import netservices
 import sys
 top = '.'
@@ -47,8 +54,40 @@ def options(opt):
     rtems.options(opt)
 
 
+def no_unicode(value):
+    if sys.version_info[0] > 2:
+        return value
+    if isinstance(value, unicode):
+        return str(value)
+    return value
+
+
+def get_config():
+    cp = configparser.ConfigParser()
+    filename = "config.ini"
+    if filename not in cp.read([filename]):
+        return None
+    return cp
+
+
+def get_configured_bsps(cp):
+    if not cp:
+        return "all"
+    bsps = []
+    for raw_bsp in cp.sections():
+        bsps.append(no_unicode(raw_bsp))
+    return ",".join(bsps)
+
+
+def bsp_configure(conf, arch_bsp):
+    netservices.bsp_configure(conf, arch_bsp)
+
+
 def configure(conf):
-    rtems.configure(conf, netservices.bsp_configure)
+    cp = get_config()
+    if conf.options.rtems_bsps == "all":
+        conf.options.rtems_bsps = get_configured_bsps(cp)
+    rtems.configure(conf, bsp_configure)
 
 
 def build(bld):
