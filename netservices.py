@@ -45,9 +45,9 @@ def build(bld):
     with open('ntp-file-import.json', 'r') as cf:
         files = json.load(cf)
         for f in files['source-files-to-import']:
-            ntp_source_files.append(os.path.join('./sebhbsd', f))
+            ntp_source_files.append(os.path.join('./bsd', f))
         for f in files['header-paths-to-import']:
-            ntp_incl.append(os.path.join('./sebhbsd', f))
+            ntp_incl.append(os.path.join('./bsd', f))
 
     ntp_obj_incl = []
     ntp_obj_incl.extend(ntp_incl)
