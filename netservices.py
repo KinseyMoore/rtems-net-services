@@ -58,6 +58,8 @@ def check_net_lib(conf, lib, name):
         conf.env['LDFLAGS_' + net_name] = []
         conf.env.STACK_NAME = name
         return True
+    if 'LIB_NET_LIBBSD' in conf.env:
+        conf.env.LIB_NET_LIBBSD = ['bsd', 'm']
     return False
 
 
