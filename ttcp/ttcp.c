@@ -54,7 +54,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#ifndef __rtems__
+#ifndef RTEMS_NET_LWIP
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -67,13 +67,14 @@
 #define __need_getopt_newlib
 #include <getopt.h>
 #include <rtems/shell.h>
+#endif /* __rtems__ */
+
 #if RTEMS_NET_LWIP
 #include <lwip/inet.h>
 #include <lwip/netdb.h>
-#endif
 #undef TCP_NODELAY
 #define select lwip_select
-#endif
+#endif /* RTEMS_NET_LWIP */
 
 #if defined(ENABLE_NANOSLEEP_DELAY)
 #include <time.h>
