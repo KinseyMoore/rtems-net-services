@@ -81,12 +81,15 @@ def build(bld):
     stack_name = bld.env.STACK_NAME
 
     stack_def = 'RTEMS_NET_' + stack_name.upper()
-    stack_inc = str(bld.path.find_node('stack/' + stack_name + '/include'))
+    stack_root = 'stack/' + stack_name
+    stack_inc = str(bld.path.find_node(stack_root + '/include'))
+    stack_common_inc = 'stack/common/include'
+    stack_adapter_source = stack_root + '/net_adapter.c'
 
     ns_cflags = ['-g', '-Wall', bld.env.OPTIMIZATION]
 
     ntp_source_files = []
-    ntp_incl = [stack_inc]
+    ntp_incl = [stack_inc, stack_common_inc]
 
     arch_lib_path = rtems.arch_bsp_lib_path(bld.env.RTEMS_VERSION,
                                             bld.env.RTEMS_ARCH_BSP)
@@ -107,7 +110,7 @@ def build(bld):
               use=[stack_name])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libntp.a"])
 
-    ttcp_incl = [stack_inc, 'ttcp/include']
+    ttcp_incl = [stack_inc, stack_common_inc, 'ttcp/include']
 
     ttcp_source_files = ['ttcp/ttcp.c']
 
@@ -138,42 +141,49 @@ def build(bld):
 
     [install_headers(path) for path in ntp_incl]
 
-    #lib_path = os.path.join(bld.env.PREFIX, arch_lib_path)
-    #bld.read_stlib('lwip', paths=[lib_path])
-    #bld.read_stlib('rtemstest', paths=[lib_path])
-    #bld.read_stlib('telnetd', paths=[lib_path])
+    # bring in knowledge of libraries from the installed BSP
+    lib_path = os.path.join(bld.env.PREFIX, arch_lib_path)
+    bld.read_stlib(stack_name, paths=[lib_path])
+    bld.read_stlib('rtemstest', paths=[lib_path])
+    bld.read_stlib('telnetd', paths=[lib_path])
 
     libs = ['m', 'rtemstest']
 
-    ntp_test_incl = ntp_incl + ['testsuites']
+    ntp_test_incl = ntp_incl + ['testsuites', stack_common_inc]
+    ntp_test_sources = ['testsuites/ntp01/test_main.c']
+    ntp_test_sources += [stack_adapter_source]
 
     bld.program(features='c',
                 target='ntp01.exe',
-                source='testsuites/ntp01/test_main.c',
+                source=' '.join(ntp_test_sources),
                 cflags=ns_cflags,
                 includes=ntp_test_incl,
                 defines=[stack_def],
                 lib=libs,
                 use=['ntp', stack_name])
 
-    ttcp_test_incl = ttcp_incl + ['testsuites']
+    ttcp_test_incl = ttcp_incl + ['testsuites', stack_common_inc]
+    ttcp_test_sources = ['testsuites/ttcpshell01/test_main.c']
+    ttcp_test_sources += [stack_adapter_source]
 
     bld.program(features='c',
                 target='ttcpshell01.exe',
-                source='testsuites/ttcpshell01/test_main.c',
+                source=' '.join(ttcp_test_sources),
                 cflags=ns_cflags,
                 defines=[stack_def],
                 includes=ttcp_test_incl,
                 lib=libs,
                 use=['ttcp',  stack_name])
 
-    test_app_incl = [stack_inc, 'testsuites']
+    tlnt_test_incl = [stack_inc, stack_common_inc, 'testsuites']
+    tlnt_test_sources = ['testsuites/telnetd01/init.c']
+    tlnt_test_sources += [stack_adapter_source]
 
     bld.program(features='c',
                 target='telnetd01.exe',
-                source='testsuites/telnetd01/init.c',
+                source=' '.join(tlnt_test_sources),
                 cflags=ns_cflags,
                 defines=[stack_def],
-                includes=test_app_incl,
+                includes=tlnt_test_incl,
                 lib=libs,
                 use=['telnetd', stack_name])

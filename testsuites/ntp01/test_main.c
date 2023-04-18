@@ -38,66 +38,11 @@
 #include <rtems/ntpd.h>
 #include <rtems/shell.h>
 
-#if RTEMS_NET_LWIP
-#include <lwip/dhcp.h>
-#include <lwip/prot/dhcp.h>
-#include <arch/sys_arch.h>
-#include <netstart.h>
-#include <bsd_compat.h>
-#endif
+#include <net_adapter.h>
 
 #include <tmacros.h>
 
 const char rtems_test_name[] = "NTP 1";
-
-static int net_start(void);
-
-#if RTEMS_NET_LWIP
-struct netif net_interface;
-
-static int net_start(void) {
-  ip_addr_t ipaddr, netmask, gw;
-
-  IP_ADDR4( &ipaddr, 10, 0, 2, 14 );
-  IP_ADDR4( &netmask, 255, 255, 255, 0 );
-  IP_ADDR4( &gw, 10, 0, 2, 3 );
-  unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x22, 0x01 };
-
-  rtems_bsd_compat_initialize();
-
-  ret = start_networking(
-    &net_interface,
-    &ipaddr,
-    &netmask,
-    &gw,
-    mac_ethernet_address
-  );
-
-  if ( ret != 0 ) {
-    return 1;
-  }
-
-  dhcp_start( &net_interface );
-
-  /*
-   * Wait for DHCP bind to start NTP. lwIP does automatic address updating in
-   * the backend that NTP isn't prepared for which causes socket conflicts when
-   * the socket for the old address gets updated to the new address and NTP's
-   * address information for the old socket is stale. NTP tries to create a new
-   * socket for the new address before deleting the old one and gets an error
-   * because it can't bind twice to the same address. This causes NTP
-   * acquisition to be delayed by minutes in the worst case.
-   */
-  volatile struct dhcp *dhcp_state = netif_dhcp_data(&net_interface);
-  if ( dhcp_state != NULL ) {
-    while (dhcp_state->state != DHCP_STATE_BOUND) {
-      sleep(1);
-    }
-  }
-
-  return 0;
-}
-#endif
 
 static const char etc_resolv_conf[] =
     "nameserver 8.8.8.8\n";
@@ -419,8 +364,6 @@ static void run_test(void)
 
 static rtems_task Init( rtems_task_argument argument )
 {
-  int ret;
-
   TEST_BEGIN();
 
   rtems_test_assert( net_start() == 0 );

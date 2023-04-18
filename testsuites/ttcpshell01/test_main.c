@@ -37,20 +37,11 @@
 #include <rtems/console.h>
 #include <ttcp.h>
 
-#if RTEMS_NET_LWIP
-#include <lwip/dhcp.h>
-#include <arch/sys_arch.h>
-#include <netstart.h>
-#endif
+#include <net_adapter.h>
 
 #include <tmacros.h>
 
 const char rtems_test_name[] = "lwIP TTCP 1";
-
-static int net_start(void);
-
-#if RTEMS_NET_LWIP
-struct netif net_interface;
 
 rtems_shell_cmd_t shell_TTCP_Command = {
   "ttcp",                                           /* name */
@@ -61,35 +52,9 @@ rtems_shell_cmd_t shell_TTCP_Command = {
   NULL                                              /* next */
 };
 
-static int net_start(void) {
-  ip_addr_t ipaddr, netmask, gw;
-
-  IP_ADDR4( &ipaddr, 10, 0, 2, 14 );
-  IP_ADDR4( &netmask, 255, 255, 255, 0 );
-  IP_ADDR4( &gw, 10, 0, 2, 3 );
-  unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x22, 0x01 };
-
-  ret = start_networking(
-    &net_interface,
-    &ipaddr,
-    &netmask,
-    &gw,
-    mac_ethernet_address
-  );
-
-  if ( ret != 0 ) {
-    return 1;
-  }
-
-  dhcp_start( &net_interface );
-
-  return 0;
-}
-
 static rtems_task Init( rtems_task_argument argument )
 {
   rtems_status_code sc;
-  int ret;
 
   TEST_BEGIN();
 
@@ -108,7 +73,6 @@ static rtems_task Init( rtems_task_argument argument )
                                      use NULL to disable a login check */
   );
   rtems_test_assert( sc == RTEMS_SUCCESSFUL );
-  sys_arch_delay( 300000 );
 
   TEST_END();
   rtems_test_exit( 0 );

@@ -28,17 +28,11 @@
 
 #include <rtems/telnetd.h>
 
-#if RTEMS_NET_LWIP
-#include <lwip/dhcp.h>
-#include <arch/sys_arch.h>
-#include <netstart.h>
-#endif
+#include <net_adapter.h>
 
 #include <tmacros.h>
 
 const char rtems_test_name[] = "TELNETD 1";
-
-static int net_start(void);
 
 rtems_shell_env_t env;
 
@@ -57,71 +51,9 @@ rtems_telnetd_config_table rtems_telnetd_config = {
   .stack_size = 8 * RTEMS_MINIMUM_STACK_SIZE,
 };
 
-#if RTEMS_NET_LWIP
-struct netif net_interface;
-
-#define print_ip( tag, ip ) \
-  printf( \
-  "%s: %" PRId32 ".%" PRId32 ".%" PRId32 ".%" PRId32 "\n", \
-  tag, \
-  ( ntohl( ip.addr ) >> 24 ) & 0xff, \
-  ( ntohl( ip.addr ) >> 16 ) & 0xff, \
-  ( ntohl( ip.addr ) >> 8 ) & 0xff, \
-  ntohl( ip.addr ) & 0xff \
-  );
-
-static int shell_main_netinfo(
-  int    argc,
-  char **argv
-)
-{
-  print_ip( "IP", net_interface.ip_addr.u_addr.ip4 );
-  print_ip( "Mask", net_interface.netmask.u_addr.ip4 );
-  print_ip( "GW", net_interface.gw.u_addr.ip4 );
-  return 0;
-}
-
-rtems_shell_cmd_t shell_NETINFO_Command = {
-  "netinfo",                                          /* name */
-  "netinfo - shows basic network info, no arguments", /* usage */
-  "net",                                              /* topic */
-  shell_main_netinfo,                                 /* command */
-  NULL,                                               /* alias */
-  NULL                                                /* next */
-};
-
-static int net_start(void) {
-  ip_addr_t ipaddr, netmask, gw;
-
-  IP_ADDR4( &ipaddr, 10, 0, 2, 14 );
-  IP_ADDR4( &netmask, 255, 255, 255, 0 );
-  IP_ADDR4( &gw, 10, 0, 2, 3 );
-  unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x22, 0x01 };
-
-  rtems_shell_init_environment();
-
-  ret = start_networking(
-    &net_interface,
-    &ipaddr,
-    &netmask,
-    &gw,
-    mac_ethernet_address
-  );
-
-  if ( ret != 0 ) {
-    return 1;
-  }
-
-  dhcp_start( &net_interface );
-
-  return 0;
-}
-#endif
-
 static rtems_task Init( rtems_task_argument argument )
 {
   rtems_status_code sc;
-  int ret;
 
   TEST_BEGIN();
 
@@ -141,7 +73,6 @@ static rtems_task Init( rtems_task_argument argument )
                                      use NULL to disable a login check */
   );
   rtems_test_assert( sc == RTEMS_SUCCESSFUL );
-  sys_arch_delay( 300000 );
 
   TEST_END();
   rtems_test_exit( 0 );
@@ -159,7 +90,6 @@ static rtems_task Init( rtems_task_argument argument )
 
 #define CONFIGURE_SHELL_COMMANDS_INIT
 #define CONFIGURE_SHELL_COMMANDS_ALL
-#define CONFIGURE_SHELL_USER_COMMANDS &shell_NETINFO_Command
 
 #define CONFIGURE_MAXIMUM_TASKS 12
 
