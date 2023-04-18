@@ -36,9 +36,13 @@ except:
 
 import netservices
 import sys
+
 top = '.'
 
 rtems_version = "6"
+subdirs = []
+
+
 try:
     import rtems_waf.rtems as rtems
 except rtems_waf.DoesNotExist:
@@ -46,12 +50,18 @@ except rtems_waf.DoesNotExist:
     sys.exit(1)
 
 
+def recurse(ctx):
+    for sd in subdirs:
+        ctx.recurse(sd)
+
 def init(ctx):
     rtems.init(ctx, version=rtems_version, long_commands=True)
 
 
 def options(opt):
     rtems.options(opt)
+    netservices.options(opt)
+    recurse(opt)
 
 
 def no_unicode(value):
@@ -80,7 +90,13 @@ def get_configured_bsps(cp):
 
 
 def bsp_configure(conf, arch_bsp):
+    env = conf.env.derive()
+    ab = conf.env.RTEMS_ARCH_BSP
+    conf.msg('Configure variant: ', ab)
+    conf.setenv(ab, env)
     netservices.bsp_configure(conf, arch_bsp)
+    recurse(conf)
+    conf.setenv(ab)
 
 
 def configure(conf):
@@ -93,3 +109,5 @@ def configure(conf):
 def build(bld):
     rtems.build(bld)
     netservices.build(bld)
+    bld.add_group()
+    recurse(bld)

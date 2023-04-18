@@ -24,10 +24,10 @@
 #  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 #  POSSIBILITY OF SUCH DAMAGE.
 
-from rtems_waf import rtems
 import json
 import os
 
+import rtems_waf.rtems as rtems
 
 def removeprefix(data, prefix):
     if data.startswith(prefix):
@@ -35,9 +35,57 @@ def removeprefix(data, prefix):
     return data
 
 
+def options(opt):
+    copts = opt.option_groups['configure options']
+    copts.add_option('--optimization',
+                     default='-O2',
+                     dest='optimization',
+                     help='Optimaization level (default: %default)')
+
+
+def add_flags(flags, new_flags):
+    for flag in new_flags:
+        if flag not in flags:
+            flags.append(flag)
+
+
+def check_net_lib(conf, lib, name):
+    net_name = 'NET_' + name.upper()
+    conf.check_cc(lib=lib,
+                  ldflags=['-lrtemsdefaultconfig'],
+                  uselib_store=net_name, mandatory=False)
+    if 'LIB_' + net_name in conf.env:
+        conf.env.STACK_NAME = name
+        return True
+    return False
+
+
+def bsp_configure(conf, arch_bsp):
+    conf.env.OPTIMIZATION = conf.options.optimization
+    conf.env.LIB += ['m']
+
+    section_flags = ["-fdata-sections", "-ffunction-sections"]
+    add_flags(conf.env.CFLAGS, section_flags)
+    add_flags(conf.env.CXXFLAGS, section_flags)
+
+    stacks = [check_net_lib(conf, 'bsd', 'libbsd'),
+              check_net_lib(conf, 'networking', 'legacy'),
+              check_net_lib(conf, 'lwip', 'lwip')]
+    stack_count = stacks.count(True)
+    if stack_count == 0:
+        conf.fatal('No networking stack found')
+    if stack_count != 1:
+        conf.fatal('More than one networking stack found')
+
 def build(bld):
+    stack_name = bld.env.STACK_NAME
+
+    stack_inc = str(bld.path.find_node('stack/' + stack_name + '/include'))
+
+    ns_cflags = ['-g', '-Wall', bld.env.OPTIMIZATION]
+
     ntp_source_files = []
-    ntp_incl = []
+    ntp_incl = [stack_inc]
 
     arch_lib_path = rtems.arch_bsp_lib_path(bld.env.RTEMS_VERSION,
                                             bld.env.RTEMS_ARCH_BSP)
@@ -49,39 +97,25 @@ def build(bld):
         for f in files['header-paths-to-import']:
             ntp_incl.append(os.path.join('./bsd', f))
 
-    ntp_obj_incl = []
-    ntp_obj_incl.extend(ntp_incl)
-
-    bld(features='c',
-        target='ntp_obj',
-        cflags='-g -Wall -O0 -DHAVE_CONFIG_H=1',
-        includes=' '.join(ntp_obj_incl),
-        source=ntp_source_files,
-        )
-
-    bld(features='c cstlib',
-        target='ntp',
-        cflags='-g -Wall -O0 -DHAVE_CONFIG_H=1',
-        use=['ntp_obj'])
+    bld.stlib(features='c',
+              target='ntp',
+              source=ntp_source_files,
+              includes=ntp_incl + [stack_inc + '/ntp'],
+              cflags=ns_cflags,
+              defines=['HAVE_CONFIG_H=1'],
+              use=[stack_name])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libntp.a"])
 
-    ttcp_incl = ['ttcp/include']
-    ttcp_obj_incl = []
-    ttcp_obj_incl.extend(ttcp_incl)
+    ttcp_incl = [stack_inc, 'ttcp/include']
 
     ttcp_source_files = ['ttcp/ttcp.c']
 
-    bld(features='c',
-        target='ttcp_obj',
-        cflags='-g -Wall -O0',
-        includes=' '.join(ttcp_obj_incl),
-        source=ttcp_source_files,
-        )
-
-    bld(features='c cstlib',
-        target='ttcp',
-        cflags='-g -Wall -O0',
-        use=['ttcp_obj'])
+    bld.stlib(features='c',
+              target='ttcp',
+              source=ttcp_source_files,
+              includes=ttcp_incl,
+              cflags=ns_cflags,
+              use=[stack_name])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libttcp.a"])
 
     def install_headers(root_path):
@@ -102,52 +136,39 @@ def build(bld):
 
     [install_headers(path) for path in ntp_incl]
 
-    lib_path = os.path.join(bld.env.PREFIX, arch_lib_path)
-    bld.read_stlib('lwip', paths=[lib_path])
-    bld.read_stlib('rtemstest', paths=[lib_path])
-    bld.read_stlib('telnetd', paths=[lib_path])
+    #lib_path = os.path.join(bld.env.PREFIX, arch_lib_path)
+    #bld.read_stlib('lwip', paths=[lib_path])
+    #bld.read_stlib('rtemstest', paths=[lib_path])
+    #bld.read_stlib('telnetd', paths=[lib_path])
 
-    ntp_test_incl = []
-    ntp_test_incl.extend(ntp_incl)
-    ntp_test_incl.append('testsuites/')
+    libs = ['m', 'rtemstest']
+
+    ntp_test_incl = ntp_incl + ['testsuites']
 
     bld.program(features='c',
                 target='ntp01.exe',
-                source='./testsuites/ntp01/test_main.c',
-                use='ntp m lwip rtemstest',
-                cflags='-g -Wall -O0',
-                includes=' '.join(ntp_test_incl))
+                source='testsuites/ntp01/test_main.c',
+                cflags=ns_cflags,
+                includes=ntp_test_incl,
+                lib=libs,
+                use=['ntp', stack_name])
 
-    ttcp_test_incl = []
-    ttcp_test_incl.extend(ttcp_incl)
-    ttcp_test_incl.append('testsuites/')
+    ttcp_test_incl = ttcp_incl + ['testsuites']
 
     bld.program(features='c',
                 target='ttcpshell01.exe',
                 source='testsuites/ttcpshell01/test_main.c',
-                use='ttcp lwip rtemstest',
-                cflags='-g -Wall -O0',
-                includes=' '.join(ttcp_test_incl))
+                cflags=ns_cflags,
+                includes=ttcp_test_incl,
+                lib=libs,
+                use=['ttcp',  stack_name])
 
-    test_app_incl = []
-    test_app_incl.append('testsuites/')
+    test_app_incl = [stack_inc, 'testsuites']
 
     bld.program(features='c',
                 target='telnetd01.exe',
                 source='testsuites/telnetd01/init.c',
-                use='telnetd lwip rtemstest',
-                cflags='-g -Wall -O0',
-                includes=' '.join(test_app_incl))
-
-
-def add_flags(flags, new_flags):
-    for flag in new_flags:
-        if flag not in flags:
-            flags.append(flag)
-
-
-def bsp_configure(conf, arch_bsp):
-    conf.env.LIB += ['m']
-    section_flags = ["-fdata-sections", "-ffunction-sections"]
-    add_flags(conf.env.CFLAGS, section_flags)
-    add_flags(conf.env.CXXFLAGS, section_flags)
+                cflags=ns_cflags,
+                includes=test_app_incl,
+                lib=libs,
+                use=['telnetd', stack_name])
