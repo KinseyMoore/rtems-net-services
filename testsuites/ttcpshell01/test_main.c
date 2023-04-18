@@ -36,16 +36,20 @@
 #include <rtems/shell.h>
 #include <rtems/console.h>
 #include <ttcp.h>
+
+#if RTEMS_NET_LWIP
 #include <lwip/dhcp.h>
 #include <arch/sys_arch.h>
+#include <netstart.h>
+#endif
 
 #include <tmacros.h>
 
-#include <netstart.h>
-
-
 const char rtems_test_name[] = "lwIP TTCP 1";
 
+static int net_start(void);
+
+#if RTEMS_NET_LWIP
 struct netif net_interface;
 
 rtems_shell_cmd_t shell_TTCP_Command = {
@@ -57,13 +61,7 @@ rtems_shell_cmd_t shell_TTCP_Command = {
   NULL                                              /* next */
 };
 
-static rtems_task Init( rtems_task_argument argument )
-{
-  rtems_status_code sc;
-  int ret;
-
-  TEST_BEGIN();
-
+static int net_start(void) {
   ip_addr_t ipaddr, netmask, gw;
 
   IP_ADDR4( &ipaddr, 10, 0, 2, 14 );
@@ -80,12 +78,24 @@ static rtems_task Init( rtems_task_argument argument )
   );
 
   if ( ret != 0 ) {
-    return;
+    return 1;
   }
 
-  rtems_shell_init_environment();
-
   dhcp_start( &net_interface );
+
+  return 0;
+}
+
+static rtems_task Init( rtems_task_argument argument )
+{
+  rtems_status_code sc;
+  int ret;
+
+  TEST_BEGIN();
+
+  rtems_test_assert( net_start() == 0 );
+
+  rtems_shell_init_environment();
 
   sc = rtems_shell_init(
     "SHLL",                       /* task name */

@@ -953,13 +953,13 @@
 /* #undef HAVE_SYNCH_H */
 
 /* Define to 1 if you have the `sysconf' function. */
-#define HAVE_SYSCONF 1
+/* #undef HAVE_SYSCONF */
 
 /* Define to 1 if you have the <sysexits.h> header file. */
 /* #undef HAVE_SYSEXITS_H */
 
 /* */
-#define HAVE_SYSLOG_FACILITYNAMES 1
+/* #undef HAVE_SYSLOG_FACILITYNAMES */
 
 /* Define to 1 if you have the <sys/audioio.h> header file. */
 /* #undef HAVE_SYS_AUDIOIO_H */
@@ -1389,7 +1389,7 @@
 #define LT_OBJDIR ".libs/"
 
 /* Does the target support multicast IP? */
-#define MCAST 1
+/* #undef MCAST */
 
 /* Should we recommend a minimum value for tickadj? */
 /* #undef MIN_REC_TICKADJ */

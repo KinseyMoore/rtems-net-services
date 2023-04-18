@@ -67,8 +67,10 @@
 #define __need_getopt_newlib
 #include <getopt.h>
 #include <rtems/shell.h>
+#if RTEMS_NET_LWIP
 #include <lwip/inet.h>
 #include <lwip/netdb.h>
+#endif
 #undef TCP_NODELAY
 #define select lwip_select
 #endif
