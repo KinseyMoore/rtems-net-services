@@ -80,6 +80,7 @@ def bsp_configure(conf, arch_bsp):
 def build(bld):
     stack_name = bld.env.STACK_NAME
 
+    stack_def = 'RTEMS_NET_' + stack_name.upper()
     stack_inc = str(bld.path.find_node('stack/' + stack_name + '/include'))
 
     ns_cflags = ['-g', '-Wall', bld.env.OPTIMIZATION]
@@ -102,7 +103,7 @@ def build(bld):
               source=ntp_source_files,
               includes=ntp_incl + [stack_inc + '/ntp'],
               cflags=ns_cflags,
-              defines=['HAVE_CONFIG_H=1'],
+              defines=[stack_def, 'HAVE_CONFIG_H=1'],
               use=[stack_name])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libntp.a"])
 
@@ -115,6 +116,7 @@ def build(bld):
               source=ttcp_source_files,
               includes=ttcp_incl,
               cflags=ns_cflags,
+              defines=[stack_def],
               use=[stack_name])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libttcp.a"])
 
@@ -150,6 +152,7 @@ def build(bld):
                 source='testsuites/ntp01/test_main.c',
                 cflags=ns_cflags,
                 includes=ntp_test_incl,
+                defines=[stack_def],
                 lib=libs,
                 use=['ntp', stack_name])
 
@@ -159,6 +162,7 @@ def build(bld):
                 target='ttcpshell01.exe',
                 source='testsuites/ttcpshell01/test_main.c',
                 cflags=ns_cflags,
+                defines=[stack_def],
                 includes=ttcp_test_incl,
                 lib=libs,
                 use=['ttcp',  stack_name])
@@ -169,6 +173,7 @@ def build(bld):
                 target='telnetd01.exe',
                 source='testsuites/telnetd01/init.c',
                 cflags=ns_cflags,
+                defines=[stack_def],
                 includes=test_app_incl,
                 lib=libs,
                 use=['telnetd', stack_name])

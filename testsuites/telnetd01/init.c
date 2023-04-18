@@ -27,16 +27,18 @@
  */
 
 #include <rtems/telnetd.h>
+
+#if RTEMS_NET_LWIP
 #include <lwip/dhcp.h>
 #include <arch/sys_arch.h>
+#include <netstart.h>
+#endif
 
 #include <tmacros.h>
 
-#include <netstart.h>
-
 const char rtems_test_name[] = "TELNETD 1";
 
-struct netif net_interface;
+static int net_start(void);
 
 rtems_shell_env_t env;
 
@@ -54,6 +56,9 @@ rtems_telnetd_config_table rtems_telnetd_config = {
   .command = telnet_shell,
   .stack_size = 8 * RTEMS_MINIMUM_STACK_SIZE,
 };
+
+#if RTEMS_NET_LWIP
+struct netif net_interface;
 
 #define print_ip( tag, ip ) \
   printf( \
@@ -85,19 +90,15 @@ rtems_shell_cmd_t shell_NETINFO_Command = {
   NULL                                                /* next */
 };
 
-static rtems_task Init( rtems_task_argument argument )
-{
-  rtems_status_code sc;
-  int ret;
-
-  TEST_BEGIN();
-
+static int net_start(void) {
   ip_addr_t ipaddr, netmask, gw;
 
   IP_ADDR4( &ipaddr, 10, 0, 2, 14 );
   IP_ADDR4( &netmask, 255, 255, 255, 0 );
   IP_ADDR4( &gw, 10, 0, 2, 3 );
   unsigned char mac_ethernet_address[] = { 0x00, 0x0a, 0x35, 0x00, 0x22, 0x01 };
+
+  rtems_shell_init_environment();
 
   ret = start_networking(
     &net_interface,
@@ -108,12 +109,23 @@ static rtems_task Init( rtems_task_argument argument )
   );
 
   if ( ret != 0 ) {
-    return;
+    return 1;
   }
 
-  rtems_shell_init_environment();
-
   dhcp_start( &net_interface );
+
+  return 0;
+}
+#endif
+
+static rtems_task Init( rtems_task_argument argument )
+{
+  rtems_status_code sc;
+  int ret;
+
+  TEST_BEGIN();
+
+  rtems_test_assert( net_start() == 0 );
 
   sc = rtems_telnetd_start( &rtems_telnetd_config );
   rtems_test_assert( sc == RTEMS_SUCCESSFUL );
