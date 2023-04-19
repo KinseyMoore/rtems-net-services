@@ -953,7 +953,7 @@
 /* #undef HAVE_SYNCH_H */
 
 /* Define to 1 if you have the `sysconf' function. */
-/* #undef HAVE_SYSCONF */
+#define HAVE_SYSCONF 1
 
 /* Define to 1 if you have the <sysexits.h> header file. */
 /* #undef HAVE_SYSEXITS_H */
