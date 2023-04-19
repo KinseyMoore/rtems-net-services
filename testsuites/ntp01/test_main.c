@@ -39,6 +39,7 @@
 #include <rtems/shell.h>
 
 #include <net_adapter.h>
+#include <net_adapter_extra.h>
 
 #include <tmacros.h>
 
@@ -384,7 +385,7 @@ static rtems_task Init( rtems_task_argument argument )
 #include <bsp/irq-info.h>
 
 #define CONFIGURE_SHELL_USER_COMMANDS \
-  &bsp_interrupt_shell_command, \
+  CONFIGURE_SHELL_USER_COMMANDS_ADAPTER, \
   &rtems_shell_DATE_Command, \
   &rtems_shell_SHUTDOWN_Command
 
@@ -401,10 +402,23 @@ static rtems_task Init( rtems_task_argument argument )
 #define CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER
 #define CONFIGURE_APPLICATION_NEEDS_CONSOLE_DRIVER
 #define CONFIGURE_APPLICATION_NEEDS_LIBBLOCK
+#define CONFIGURE_APPLICATION_NEEDS_STUB_DRIVER
+#define CONFIGURE_APPLICATION_NEEDS_ZERO_DRIVER
 
-#define CONFIGURE_MAXIMUM_FILE_DESCRIPTORS 32
+#define CONFIGURE_MAXIMUM_DRIVERS 32
+#define CONFIGURE_MAXIMUM_FILE_DESCRIPTORS 64
 
-#define CONFIGURE_MAXIMUM_TASKS 12
+#define CONFIGURE_MAXIMUM_USER_EXTENSIONS 1
+
+#define CONFIGURE_UNLIMITED_ALLOCATION_SIZE 32
+
+#define CONFIGURE_BDBUF_BUFFER_MAX_SIZE (64 * 1024)
+#define CONFIGURE_BDBUF_MAX_READ_AHEAD_BLOCKS 4
+#define CONFIGURE_BDBUF_CACHE_MEMORY_SIZE (1 * 1024 * 1024)
+
+#define CONFIGURE_INIT_TASK_STACK_SIZE (32 * 1024)
+
+#define CONFIGURE_MAXIMUM_TASKS 25
 
 #define CONFIGURE_MAXIMUM_USER_EXTENSIONS 1
 

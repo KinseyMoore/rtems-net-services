@@ -40,14 +40,26 @@
 #include <machine/rtems-bsd-commands.h>
 #include <rtems/rtems/status.h>
 #include <fcntl.h>
-//#include <ifaddrs.h>
 #include <stdio.h>
-//#include <stdlib.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <rtems/dhcpcd.h>
 #include <rtems/bsd/bsd.h>
 #include <rtems/bsd/iface.h>
 
+#define RTEMS_BSD_CONFIG_NET_PF_UNIX
+#define RTEMS_BSD_CONFIG_NET_IP_MROUTE
+
+#ifdef RTEMS_BSD_MODULE_NETINET6
+#define RTEMS_BSD_CONFIG_NET_IP6_MROUTE
+#endif
+
+#define RTEMS_BSD_CONFIG_NET_IF_BRIDGE
+#define RTEMS_BSD_CONFIG_NET_IF_LAGG
+#define RTEMS_BSD_CONFIG_NET_IF_VLAN
+#define RTEMS_BSD_CONFIG_BSP_CONFIG
+#define RTEMS_BSD_CONFIG_INIT
+#include <machine/rtems-bsd-config.h>
 
 static void
 default_network_ifconfig_hwif0(char *ifname)
@@ -88,22 +100,12 @@ default_network_dhcpcd(void)
 }
 
 static void
-default_wait_for_link_up( const char *name )
+default_network_set_self_prio(rtems_task_priority prio)
 {
-  size_t seconds = 0;
-  while ( true ) {
-    bool link_active = false;
-    assert(rtems_bsd_iface_link_state( name, &link_active ) == 0);
-    if (link_active) {
-      return;
-    }
-    sleep( 1 );
-    ++seconds;
-    if (seconds > 10) {
-      printf("error: %s: no active link\n", name);
-      assert(seconds < 10);
-    }
-  }
+  rtems_status_code sc;
+
+  sc = rtems_task_set_priority(RTEMS_SELF, prio, &prio);
+  assert(sc == RTEMS_SUCCESSFUL);
 }
 
 int net_start()
@@ -111,6 +113,14 @@ int net_start()
   char *ifname;
   char ifnamebuf[IF_NAMESIZE];
   rtems_status_code sc;
+
+  /*
+   * Default the syslog priority to 'debug' to aid developers.
+   */
+  rtems_bsd_setlogpriority("debug");
+
+  /* Let other tasks run to complete background work */
+  default_network_set_self_prio(RTEMS_MAXIMUM_PRIORITY - 1U);
 
   rtems_bsd_initialize();
 
@@ -120,17 +130,10 @@ int net_start()
   sc = rtems_task_wake_after(2);
   assert(sc == RTEMS_SUCCESSFUL);
   
-  default_network_ifconfig_hwif0(ifname);
   rtems_bsd_ifconfig_lo0();
+  default_network_ifconfig_hwif0(ifname);
   default_network_dhcpcd();
   
-  /*
-   * Per test option to wait for the network interface. If the address
-   * is static the PHY may take a while to connect and bring the
-   * interface online.
-   */
-  default_wait_for_link_up( ifname );
-
   // needs to wait for DHCP to finish
   return 0;
 }
