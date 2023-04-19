@@ -34,3 +34,7 @@
  */
 
 #include <net_adapter.h>
+
+int net_start(void) {
+  return 1;
+}
