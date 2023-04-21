@@ -29,6 +29,80 @@ import os
 
 import rtems_waf.rtems as rtems
 
+
+def net_check_libbsd(conf):
+    pass
+
+
+def net_check_legacy(conf):
+    if conf.env.NET_NAME != 'legacy':
+        return
+    #
+    # BSPs must define:
+    #  - RTEMS_BSP_NETWORK_DRIVER_NAME
+    #  - RTEMS_BSP_NETWORK_DRIVER_ATTACH
+    #
+    for define in [
+            'RTEMS_BSP_NETWORK_DRIVER_NAME', 'RTEMS_BSP_NETWORK_DRIVER_ATTACH'
+    ]:
+        code = ['#include <bspopts.h>']
+        code += ['#include <bsp.h>']
+        code += ['#ifndef %s' % (define)]
+        code += ['  #error %s not defined' % (define)]
+        code += ['#endif']
+        try:
+            conf.check_cc(fragment=rtems.test_application(code),
+                          execute=False,
+                          msg='Checking for %s' % (define))
+        except conf.errors.WafError:
+            conf.fatal(ab + ' does not provide %s' % (define))
+
+
+def net_check_lwip(conf):
+    pass
+
+
+def net_config_header(bld):
+    if not os.path.exists(bld.env.NET_CONFIG):
+        bld.fatal('network configuraiton \'%s\' not found' %
+                  (bld.env.NET_CONFIG))
+    net_tags = [
+        'NET_CFG_IFACE', 'NET_CFG_IFACE_OPTS', 'NET_CFG_BOOT_PROT', 'NET_CFG_SELF_IP',
+        'NET_CFG_NETMASK', 'NET_CFG_MAC_ADDR', 'NET_CFG_GATEWAY_IP',
+        'NET_CFG_DOMAINNNAME', 'NET_CFG_DNS_IP', 'NET_CFG_NTP_IP'
+    ]
+    try:
+        net_cfg_lines = open(bld.env.NET_CONFIG).readlines()
+    except:
+        bld.fatal('network configuraiton \'%s\' read failed' %
+                  (bld.env.NET_CONFIG))
+    lc = 0
+    sed = 'sed '
+    net_defaults = {}
+    for l in net_cfg_lines:
+        lc += 1
+        if not l.strip().startswith('NET_CFG_'):
+            bld.fatal('network configuration \'%s\' ' \
+                      'invalid config: %d: %s' % (bld.env.NET_CONFIG, lc, l))
+        ls = l.split('=')
+        if len(ls) != 2:
+            bld.fatal('network configuration \'%s\' ' \
+                      'parse error: %d: %s' % (bld.env.NET_CONFIG, lc, l))
+        lhs = ls[0].strip()
+        rhs = ls[1].strip()
+        if lhs in net_tags:
+            net_defaults[lhs] = rhs
+        else:
+            bld.fatal('network configuration \'%s\' ' \
+                      'invalid config: %d: %s' % (bld.env.NET_CONFIG, lc, l))
+    for cfg in net_defaults:
+        sed += "-e 's/@%s@/%s/' " % (cfg, net_defaults[cfg])
+    bld(target=bld.env.NETWORK_CONFIG,
+        source='testsuites/include/network-config.h.in',
+        rule=sed + ' < ${SRC} > ${TGT}',
+        update_outputs=True)
+
+
 def removeprefix(data, prefix):
     if data.startswith(prefix):
         return data[len(prefix):]
@@ -41,6 +115,14 @@ def options(opt):
                      default='-O2',
                      dest='optimization',
                      help='Optimaization level (default: %default)')
+    copts.add_option('--net-test-config',
+                     default='config.inc',
+                     dest='net_config',
+                     help='Network test configuration (default: %default)')
+    copts.add_option('--ntp-debug',
+                     action='store_true',
+                     dest='ntp_debug',
+                     help='Build NTP with DEBUG enabled (default: %default)')
 
 
 def add_flags(flags, new_flags):
@@ -64,8 +146,14 @@ def check_net_lib(conf, lib, name):
 
 
 def bsp_configure(conf, arch_bsp):
+    conf.env.NET_CONFIG = conf.options.net_config
+    bld_inc = conf.path.get_bld().find_or_declare('include')
+    conf.env.NETWORK_CONFIG = str(bld_inc.find_or_declare('network-config.h'))
     conf.env.OPTIMIZATION = conf.options.optimization
     conf.env.LIB += ['m']
+
+    bld_inc = conf.path.get_bld().find_or_declare('include')
+    conf.env.IFLAGS = [str(bld_inc)]
 
     section_flags = ["-fdata-sections", "-ffunction-sections"]
     add_flags(conf.env.CFLAGS, section_flags)
@@ -80,16 +168,24 @@ def bsp_configure(conf, arch_bsp):
     if stack_count != 1:
         conf.fatal('More than one networking stack found')
 
+    net_check_libbsd(conf)
+    net_check_legacy(conf)
+    net_check_lwip(conf)
+
+    conf.env.NTP_DEFINES = []
+    if conf.options.ntp_debug:
+        conf.env.NTP_DEFINES += ['DEBUG=1']
+
 
 def build(bld):
     net_name = bld.env.NET_NAME
     net_use = 'NET_' + net_name.upper()
-    net_def = 'RTEMS_NET_' + net_name.upper()
+    net_def = 'RTEMS_NET_' + net_name.upper() + '=1'
     net_root = os.path.join('net', net_name)
     net_inc = str(bld.path.find_node(os.path.join(net_root, 'include')))
     net_adapter_source = net_root + '/net_adapter.c'
 
-    inc = [str(bld.path.find_node('include')), net_inc]
+    inc = bld.env.IFLAGS +  ['include', net_inc]
     cflags = ['-g', bld.env.OPTIMIZATION]
 
     ntp_source_files = []
@@ -105,12 +201,16 @@ def build(bld):
         for f in files['header-paths-to-import']:
             ntp_incl.append(os.path.join('./bsd', f))
 
+    net_config_header(bld)
+
+    bld.add_group()
+
     bld.stlib(features='c',
               target='ntp',
               source=ntp_source_files,
               includes=ntp_incl + [os.path.join(net_root, 'ntp')],
               cflags=cflags,
-              defines=[net_def, 'HAVE_CONFIG_H=1'],
+              defines=[net_def, 'HAVE_CONFIG_H=1'] + bld.env.NTP_DEFINES,
               use=[net_use])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libntp.a"])
 

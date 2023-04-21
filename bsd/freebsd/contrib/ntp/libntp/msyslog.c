@@ -96,7 +96,7 @@ format_errmsg(
  *		    For Windows, we have:
  *			#define errno_to_str isc_strerror
  */
-#ifndef errno_to_str
+#if !defined(errno_to_str) || DEBUG
 void
 errno_to_str(
 	int	err,
@@ -430,7 +430,7 @@ init_logging(
 #  ifndef LOG_NTP
 #	define	LOG_NTP LOG_DAEMON
 #  endif
-	openlog(progname, LOG_PID | LOG_NDELAY, (was_daemon) 
+	openlog(progname, LOG_PID | LOG_NDELAY, (was_daemon)
 						    ? LOG_NTP
 						    : 0);
 #  ifdef DEBUG
@@ -576,7 +576,7 @@ setup_logfile(
 			msyslog(LOG_ERR, "Cannot open log file %s, %m",
 				name);
 		return ;
-	} 
+	}
 	if (NULL == syslog_fname)
 		return;
 
