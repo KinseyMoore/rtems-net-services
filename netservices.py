@@ -66,10 +66,14 @@ def net_config_header(bld):
     if not os.path.exists(bld.env.NET_CONFIG):
         bld.fatal('network configuraiton \'%s\' not found' %
                   (bld.env.NET_CONFIG))
-    net_tags = [
-        'NET_CFG_IFACE', 'NET_CFG_IFACE_OPTS', 'NET_CFG_BOOT_PROT', 'NET_CFG_SELF_IP',
-        'NET_CFG_NETMASK', 'NET_CFG_MAC_ADDR', 'NET_CFG_GATEWAY_IP',
-        'NET_CFG_DOMAINNNAME', 'NET_CFG_DNS_IP', 'NET_CFG_NTP_IP'
+    net_manditory_tags = [
+        'NET_CFG_IFACE',
+        'NET_CFG_BOOT_PROT',
+    ]
+    net_optional_tags = [
+        'NET_CFG_IFACE_OPTS', 'NET_CFG_SELF_IP', 'NET_CFG_NETMASK',
+        'NET_CFG_MAC_ADDR', 'NET_CFG_GATEWAY_IP', 'NET_CFG_DOMAINNAME',
+        'NET_CFG_DNS_IP', 'NET_CFG_NTP_IP'
     ]
     try:
         net_cfg_lines = open(bld.env.NET_CONFIG).readlines()
@@ -84,17 +88,24 @@ def net_config_header(bld):
         if not l.strip().startswith('NET_CFG_'):
             bld.fatal('network configuration \'%s\' ' \
                       'invalid config: %d: %s' % (bld.env.NET_CONFIG, lc, l))
-        ls = l.split('=')
+        ls = l.strip().split('#', 1)[0]
+        if len(ls) == 0:
+            continue
+        ls = ls.split('=')
         if len(ls) != 2:
             bld.fatal('network configuration \'%s\' ' \
                       'parse error: %d: %s' % (bld.env.NET_CONFIG, lc, l))
         lhs = ls[0].strip()
         rhs = ls[1].strip()
-        if lhs in net_tags:
+        if lhs in net_manditory_tags or lhs in net_optional_tags:
             net_defaults[lhs] = rhs
         else:
             bld.fatal('network configuration \'%s\' ' \
                       'invalid config: %d: %s' % (bld.env.NET_CONFIG, lc, l))
+    for cfg in net_manditory_tags:
+        if cfg not in net_defaults:
+            bld.fatal('network configuration \'%s\' ' \
+                      'manditory config  not found: %s' % (bld.env.NET_CONFIG, cfg))
     for cfg in net_defaults:
         sed += "-e 's/@%s@/%s/' " % (cfg, net_defaults[cfg])
     bld(target=bld.env.NETWORK_CONFIG,
@@ -135,7 +146,8 @@ def check_net_lib(conf, lib, name):
     net_name = 'NET_' + name.upper()
     conf.check_cc(lib=lib,
                   ldflags=['-lrtemsdefaultconfig'],
-                  uselib_store=net_name, mandatory=False)
+                  uselib_store=net_name,
+                  mandatory=False)
     if 'LIB_' + net_name in conf.env:
         conf.env.NET_NAME = name
         # clean up the check
@@ -159,9 +171,11 @@ def bsp_configure(conf, arch_bsp):
     add_flags(conf.env.CFLAGS, section_flags)
     add_flags(conf.env.CXXFLAGS, section_flags)
 
-    stacks = [check_net_lib(conf, 'bsd', 'libbsd'),
-              check_net_lib(conf, 'networking', 'legacy'),
-              check_net_lib(conf, 'lwip', 'lwip')]
+    stacks = [
+        check_net_lib(conf, 'bsd', 'libbsd'),
+        check_net_lib(conf, 'networking', 'legacy'),
+        check_net_lib(conf, 'lwip', 'lwip')
+    ]
     stack_count = stacks.count(True)
     if stack_count == 0:
         conf.fatal('No networking stack found')
@@ -185,7 +199,7 @@ def build(bld):
     net_inc = str(bld.path.find_node(os.path.join(net_root, 'include')))
     net_adapter_source = net_root + '/net_adapter.c'
 
-    inc = bld.env.IFLAGS +  ['include', net_inc]
+    inc = bld.env.IFLAGS + ['include', net_inc]
     cflags = ['-g', bld.env.OPTIMIZATION]
 
     ntp_source_files = []
@@ -236,20 +250,15 @@ def build(bld):
                 if ext == '.h':
                     subpath = removeprefix(removeprefix(path, root_path), "/")
                     bld.install_files(
-                        os.path.join("${PREFIX}",
-                                     arch_lib_path,
-                                     "include",
-                                     subpath),
-                        os.path.join(path, name)
-                    )
+                        os.path.join("${PREFIX}", arch_lib_path, "include",
+                                     subpath), os.path.join(path, name))
 
     [install_headers(path) for path in ntp_incl]
 
     libs = ['rtemstest']
 
     ntp_test_incl = ntp_incl + ['testsuites']
-    ntp_test_sources = ['testsuites/ntp01/test_main.c',
-                        net_adapter_source]
+    ntp_test_sources = ['testsuites/ntp01/test_main.c', net_adapter_source]
 
     bld.program(features='c',
                 target='ntp01.exe',
@@ -271,7 +280,7 @@ def build(bld):
                 defines=[net_def],
                 includes=ttcp_test_incl,
                 lib=libs,
-                use=['ttcp',  net_use])
+                use=['ttcp', net_use])
 
     tlnt_test_incl = inc + ['testsuites']
     tlnt_test_sources = ['testsuites/telnetd01/init.c']

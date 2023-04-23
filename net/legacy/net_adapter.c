@@ -33,8 +33,72 @@
  * SUCH DAMAGE.
  */
 
+#include <stdio.h>
+
+#include <rtems.h>
+#include <rtems/dhcp.h>
+#include <rtems/rtems_bsdnet.h>
+
+#include <bsp.h>
+
 #include <net_adapter.h>
 
+#include <network-config.h>
+
+static char* iface = NET_CFG_IFACE;
+static char* boot_prot = NET_CFG_BOOT_PROT;
+
+static struct rtems_bsdnet_ifconfig ifcfg = {
+  RTEMS_BSP_NETWORK_DRIVER_NAME,
+  RTEMS_BSP_NETWORK_DRIVER_ATTACH
+};
+
+struct rtems_bsdnet_config rtems_bsdnet_config;
+
+static bool rtems_net_legacy_config(struct rtems_bsdnet_config* bsd) {
+  if (bsd->ifconfig == NULL) {
+    bsd->ifconfig = &ifcfg;
+  }
+  ifcfg.name = iface;
+#ifdef NET_CFG_SELF_IP
+  ifcfg.ip_address = NET_CFG_SELF_IP;
+#endif
+#ifdef NET_CFG_NETMASK
+  ifcfg.ip_netmask = NET_CFG_NETMASK;
+#endif
+#ifdef NET_CFG_GATEWAY_IP
+  bsd->gateway = NET_CFG_GATEWAY_IP;
+#endif
+#ifdef NET_CFG_DOMAINNAME
+  bsd->domainname = NET_CFG_DOMAINNAME;
+#endif
+#ifdef NET_CFG_DNS_IP
+  bsd->name_server[0] = NET_CFG_DNS_IP;
+#endif
+  if (strcmp(boot_prot, "static") == 0) {
+    bsd->bootp = NULL;
+  } else if (strcmp(boot_prot, "bootp") == 0) {
+    bsd->bootp = rtems_bsdnet_do_bootp;
+  } else if (strcmp(boot_prot, "dhcp") == 0) {
+    bsd->bootp = rtems_bsdnet_do_dhcp;
+  } else {
+    printf("%s: %d: invalid network configuration: %s\n",
+           __FILE__, __LINE__, boot_prot);
+    return false;
+  }
+  return true;
+}
+
 int net_start(void) {
-  return 1;
+  int rv;
+  rv = rtems_net_legacy_config(&rtems_bsdnet_config);
+  if (!rv) {
+    return -1;
+  }
+  rv = rtems_bsdnet_initialize_network();
+  if (rv != 0) {
+    printf("error: legacy stack initialization failed\n");
+    return -1;
+  }
+  return 0;
 }
