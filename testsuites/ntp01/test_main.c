@@ -46,6 +46,11 @@
 
 const char rtems_test_name[] = "NTP 1";
 
+#define NTP_DEBUG 2
+#define ntp_xstr(s) ntp_str(s)
+#define ntp_str(s) #s
+#define NTP_DEBUG_STR ntp_xstr(NTP_DEBUG)
+
 static const char etc_resolv_conf[] =
 #ifdef NET_CFG_NTP_IP
     "nameserver " NET_CFG_DNS_IP "\n";
@@ -356,25 +361,35 @@ static void setup_etc(void)
 
 static void run_test(void)
 {
-	rtems_status_code sc;
-	char *argv[] = {
-		"ntpd",
-		"-g",
-		NULL
-	};
+  rtems_status_code sc;
+  char *argv[] = {
+    "ntpd",
+    "-g",
+#if NTP_DEBUG
+    "--set-debug-level=" NTP_DEBUG_STR,
+#endif
+    NULL
+  };
+  #define argc ((sizeof(argv) / sizeof(argv[0])) - 1)
 
-	setup_etc();
+  setup_etc();
 
-	sc = rtems_shell_init("SHLL", 16 * 1024, 1, CONSOLE_DEVICE_NAME,
-	    false, false, NULL);
-	assert(sc == RTEMS_SUCCESSFUL);
+  sc = rtems_shell_init("SHLL", 16 * 1024, 1, CONSOLE_DEVICE_NAME,
+    false, false, NULL);
+  assert(sc == RTEMS_SUCCESSFUL);
 
-        (void)rtems_ntpd_run(2, argv);
+  (void)rtems_ntpd_run(argc, argv);
 }
 
 static rtems_task Init( rtems_task_argument argument )
 {
+  rtems_printer test_printer;
+  rtems_print_printer_printf(&test_printer);
+  rtems_test_printer = test_printer;
+
   TEST_BEGIN();
+  fflush(stdout);
+  sleep(1);
 
   rtems_test_assert( net_start() == 0 );
 
@@ -383,6 +398,8 @@ static rtems_task Init( rtems_task_argument argument )
   run_test();
 
   TEST_END();
+  fflush(stdout);
+
   rtems_test_exit( 0 );
 }
 
@@ -404,6 +421,10 @@ static rtems_task Init( rtems_task_argument argument )
 #define CONFIGURE_SHELL_COMMAND_STACKUSE
 #define CONFIGURE_SHELL_COMMAND_PROFREPORT
 #define CONFIGURE_SHELL_COMMAND_RTC
+#if RTEMS_NET_LEGACY
+  #define RTEMS_NETWORKING 1
+  #define CONFIGURE_SHELL_COMMANDS_ALL_NETWORKING
+#endif /* RTEMS_NET_LEGACY */
 
 #include <rtems/shellconfig.h>
 
