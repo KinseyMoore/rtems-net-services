@@ -108,7 +108,7 @@ default_network_set_self_prio(rtems_task_priority prio)
   assert(sc == RTEMS_SUCCESSFUL);
 }
 
-int net_start()
+int net_start(void)
 {
   char *ifname;
   char ifnamebuf[IF_NAMESIZE];
@@ -129,11 +129,11 @@ int net_start()
   /* Let the callout timer allocate its resources */
   sc = rtems_task_wake_after(2);
   assert(sc == RTEMS_SUCCESSFUL);
-  
+
   rtems_bsd_ifconfig_lo0();
   default_network_ifconfig_hwif0(ifname);
   default_network_dhcpcd();
-  
+
   // needs to wait for DHCP to finish
   return 0;
 }

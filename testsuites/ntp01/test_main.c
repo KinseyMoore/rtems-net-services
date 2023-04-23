@@ -40,17 +40,26 @@
 
 #include <net_adapter.h>
 #include <net_adapter_extra.h>
+#include <network-config.h>
 
 #include <tmacros.h>
 
 const char rtems_test_name[] = "NTP 1";
 
 static const char etc_resolv_conf[] =
+#ifdef NET_CFG_NTP_IP
+    "nameserver " NET_CFG_DNS_IP "\n";
+#else
     "nameserver 8.8.8.8\n";
+#endif
 
 static const char etc_ntp_conf[] =
     "tos minclock 3 maxclock 6\n"
+#ifdef NET_CFG_NTP_IP
+    "server " NET_CFG_NTP_IP "\n"
+#else
     "pool 0.freebsd.pool.ntp.org iburst\n"
+#endif
     "restrict default limited kod nomodify notrap noquery nopeer\n"
     "restrict source  limited kod nomodify notrap noquery\n"
     "restrict 10.0.0.0 mask 255.0.0.0\n"
