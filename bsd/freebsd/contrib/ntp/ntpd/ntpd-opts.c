@@ -73,6 +73,9 @@ extern FILE * option_usage_fp;
 #  define NULL 0
 #endif
 
+#ifdef __rtems__
+#include <machine/rtems-bsd-program.h>
+#endif
 /**
  *  static const strings for ntpd options
  */
