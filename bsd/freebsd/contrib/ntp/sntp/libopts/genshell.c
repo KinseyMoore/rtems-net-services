@@ -48,6 +48,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __rtems__
+#include <machine/rtems-bsd-program.h>
+#endif
 #ifdef  __cplusplus
 extern "C" {
 #endif

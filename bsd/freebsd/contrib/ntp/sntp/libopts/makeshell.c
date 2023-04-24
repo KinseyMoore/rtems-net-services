@@ -30,6 +30,9 @@
  *  13aa749a5b0a454917a944ed8fffc530b784f5ead522b1aacaf4ec8aa55a6239  COPYING.mbsd
  */
 
+#ifdef __rtems__
+#include <machine/rtems-bsd-program.h>
+#endif
  static inline unsigned char to_uchar (char ch) { return ch; }
 
 #define UPPER(_c) (toupper(to_uchar(_c)))
