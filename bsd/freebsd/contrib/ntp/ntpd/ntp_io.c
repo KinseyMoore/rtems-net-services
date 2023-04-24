@@ -197,7 +197,27 @@ static	struct refclockio *refio;
  * File descriptor masks etc. for call to select
  * Not needed for I/O Completion Ports or anything outside this file
  */
+#ifdef __rtems__
+#include <rtems/libio_.h>
+static int rtems_fd_set_alloc(fd_set **setp) {
+	static size_t _fds_size;
+	if (*setp == NULL) {
+		_fds_size = sizeof(fd_set) * (howmany(rtems_libio_number_iops, sizeof(fd_set) * 8));
+		*setp = malloc(_fds_size);
+		if (*setp == NULL) {
+			errno = ENOMEM;
+			return -1;
+		}
+	}
+	memset(*setp, 0, _fds_size);
+	return 0;
+}
+#define activefds (*activefds_prealloc)
+static fd_set *activefds_prealloc;
+#define rtems_activefds_alloc() rtems_fd_set_alloc(&activefds_prealloc)
+#else /* __rtems__ */
 static fd_set activefds;
+#endif /* __rtems__ */
 static int maxactivefd;
 
 /*
@@ -361,7 +381,12 @@ maintain_activefds(
 {
 	int i;
 
+#ifdef __rtems__
+	rtems_activefds_alloc();
+	if (fd < 0 || fd >= rtems_libio_number_iops) {
+#else
 	if (fd < 0 || fd >= FD_SETSIZE) {
+#endif /* __rtems__ */
 		msyslog(LOG_ERR,
 			"Too many sockets in use, FD_SETSIZE %d exceeded by fd %d",
 			FD_SETSIZE, fd);
@@ -2068,6 +2093,9 @@ create_sockets(
 	u_short port
 	)
 {
+#ifdef __rtems__
+	rtems_activefds_alloc();
+#endif /* __rtems__ */
 #ifndef HAVE_IO_COMPLETION_PORT
 	/*
 	 * I/O Completion Ports don't care about the select and FD_SET
@@ -3615,8 +3643,21 @@ void
 io_handler(void)
 {
 #  ifndef HAVE_SIGNALED_IO
+#if __rtems__
+	#define rdfdes (*rdfdes_prealloc)
+	static fd_set *rdfdes_prealloc;
+#else
 	fd_set rdfdes;
+#endif
 	int nfound;
+
+#if __rtems__
+	if (rtems_fd_set_alloc(&rdfdes_prealloc) < 0) {
+		return;
+	}
+#else
+	FD_ZERO(&set);
+#endif
 
 	/*
 	 * Use select() on all on all input fd's for unlimited
@@ -3730,6 +3771,11 @@ sanitize_fdset(
 {
 	int j, b, maxscan;
 
+#ifdef __rtems__
+	if (rtems_activefds_alloc() < 0 ){
+		return - 1;
+	}
+#endif /* __rtems__ */
 #  ifndef HAVE_SIGNALED_IO
 	/*
 	 * extended FAU debugging output
@@ -4875,4 +4921,3 @@ init_async_notifications(void)
 {
 }
 #endif
-
