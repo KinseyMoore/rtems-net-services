@@ -1682,7 +1682,7 @@ typedef unsigned int	uintptr_t;
 #define VERSION "4.2.8p12"
 
 /* vsnprintf expands "%m" to strerror(errno) */
-#define VSNPRINTF_PERCENT_M 1
+/* #undef VSNPRINTF_PERCENT_M  */
 
 /* configure --enable-ipv6 */
 #define WANT_IPV6 1

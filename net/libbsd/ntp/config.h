@@ -1275,7 +1275,7 @@
 	#endif
 	#define ISC_PLATFORM_NORETURN_PRE
 	#define ISC_PLATFORM_NORETURN_POST __attribute__((__noreturn__))
-    
+
 
 
 /* Define to 1 if you have the `__ntp_gettime' function. */
@@ -1292,8 +1292,8 @@
 	    #ifdef HAVE___SS_FAMILY_IN_SS
 	    # define ss_family __ss_family
 	    #endif /* HAVE___SS_FAMILY_IN_SS */
-	
-    
+
+
 
 /* Define to provide `rpl_snprintf' function. */
 /* #undef HW_WANT_RPL_SNPRINTF */
@@ -1682,7 +1682,7 @@ typedef unsigned int	uintptr_t;
 #define VERSION "4.2.8p12"
 
 /* vsnprintf expands "%m" to strerror(errno) */
-#define VSNPRINTF_PERCENT_M 1
+/* #undef VSNPRINTF_PERCENT_M  */
 
 /* configure --enable-ipv6 */
 #define WANT_IPV6 1
@@ -1791,15 +1791,15 @@ typedef unsigned int	uintptr_t;
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 /* #undef size_t */
 
-	
+
 	    #if !defined(_KERNEL) && !defined(PARSESTREAM)
 	    /*
 	     * stdio.h must be included after _GNU_SOURCE is defined
 	     * but before #define snprintf rpl_snprintf
 	     */
-	    # include <stdio.h>	
+	    # include <stdio.h>
 	    #endif
-	
+
 
 /* Define to rpl_snprintf if the replacement function should be used. */
 /* #undef snprintf */
@@ -1857,7 +1857,7 @@ typedef union mpinfou {
 	#  endif
 	# endif
 	#endif	/* !defined(_KERNEL) && !defined(PARSESTREAM) */
-	
+
 /*
  * FreeBSD specific: Explicitly specify date/time for reproducible build.
  */
