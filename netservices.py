@@ -219,12 +219,14 @@ def build(bld):
 
     bld.add_group()
 
+    ntpq_defines = ['NO_MAIN_ALLOWED=1']
+
     bld.stlib(features='c',
               target='ntp',
               source=ntp_source_files,
               includes=ntp_incl + [os.path.join(net_root, 'ntp')],
               cflags=cflags,
-              defines=[net_def, 'HAVE_CONFIG_H=1'] + bld.env.NTP_DEFINES,
+              defines=[net_def, 'HAVE_CONFIG_H=1'] + ntpq_defines + bld.env.NTP_DEFINES,
               use=[net_use])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libntp.a"])
 
@@ -266,7 +268,7 @@ def build(bld):
                 cflags=cflags,
                 includes=ntp_test_incl,
                 defines=[net_def],
-                lib=libs,
+                lib=['telnetd'] + libs,
                 use=['ntp', net_use])
 
     ttcp_test_incl = ttcp_incl + ['testsuites']

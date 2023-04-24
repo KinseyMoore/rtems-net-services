@@ -11,8 +11,6 @@
 #define RTEMS_BSD_PROGRAM_NO_ASPRINTF_WRAP
 #define RTEMS_BSD_PROGRAM_NO_FREE_WRAP
 
-#include <machine/rtems-bsd-program.h>
-
 #include "namespace.h"
 
 /* Define if building universal (internal helper macro) */

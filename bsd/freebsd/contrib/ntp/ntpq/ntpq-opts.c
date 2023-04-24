@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  *  EDIT THIS FILE WITH CAUTION  (ntpq-opts.c)
  *

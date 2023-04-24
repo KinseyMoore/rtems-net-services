@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  * ntpq-subs.c - subroutines which are called to perform ntpq commands.
  */
@@ -10,6 +12,10 @@
 #include "ntpq.h"
 #include "ntpq-opts.h"
 
+#ifdef __rtems__
+#undef fflush
+#define fflush(fp)
+#endif /* __rtems__ */
 extern char	currenthost[];
 extern int	currenthostisnum;
 size_t		maxhostlen;
@@ -270,7 +276,13 @@ typedef int (*qsort_cmp)(const void *, const void *);
 #define OLD_CTL_PST_SEL_SYNCCAND	2
 #define OLD_CTL_PST_SEL_SYSPEER 	3
 
+#ifdef _rtems__
+static const
+#endif /* __rtems__ */
 char flash2[] = " .+*    "; /* flash decode for version 2 */
+#ifdef _rtems__
+static const
+#endif /* __rtems__ */
 char flash3[] = " x.-+#*o"; /* flash decode for peer status version 3 */
 
 struct varlist {
@@ -400,7 +412,11 @@ xprintf(
 	int	rc;
 
 	va_start(va, fmt);
+#ifndef __rtems__
 	rc = vfprintf((ofp ? ofp : stderr), fmt, va);
+#else /* __rtems__ */
+	rc = vfprintf(ofp, fmt, va);
+#endif /* __rtems__ */
 	va_end(va);
 	return rc;
 }
@@ -411,7 +427,11 @@ xputs(
 	FILE *		ofp
 	)
 {
+#ifndef __rtems__
 	return fputs(str, (ofp ? ofp : stderr));
+#else /* __rtems__ */
+	return fputs(str, ofp);
+#endif /* __rtems__ */
 }
 
 static	int
@@ -420,7 +440,11 @@ xputc(
 	FILE *	ofp
 	)
 {
+#ifndef __rtems__
 	return fputc(ch, (ofp ? ofp : stderr));
+#else /* __rtems__ */
+	return fputc(ch, ofp);
+#endif /* __rtems__ */
 }
 
 /*
@@ -737,9 +761,11 @@ dolist(
 	 * if we're asking for specific variables don't include the
 	 * status header line in the output.
 	 */
+#ifndef __rtems__
 	if (old_rv)
 		quiet = 0;
 	else
+#endif /* __rtems__ */
 		quiet = (vlist->name != NULL);
 
 	res = doquerylist(vlist, op, associd, 0, &rstatus, &dsize, &datap);
@@ -3174,7 +3200,9 @@ mrulist(
 	size_t i;
 
 	mrulist_interrupted = FALSE;
+#ifndef __rtems__
 	push_ctrl_c_handler(&mrulist_ctrl_c_hook);
+#endif /* __rtems__ */
 	xprintf(stderr,
 		"Ctrl-C will stop MRU retrieval and display partial results.\n");
 	fflush(stderr);
@@ -3326,7 +3354,9 @@ cleanup_return:
 	hash_table = NULL;
 	INIT_DLIST(mru_list, mlink);
 
+#ifndef __rtems__
 	pop_ctrl_c_handler(&mrulist_ctrl_c_hook);
+#endif /* __rtems__ */
 }
 
 

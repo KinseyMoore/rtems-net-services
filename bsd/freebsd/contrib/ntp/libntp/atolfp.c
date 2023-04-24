@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  * atolfp - convert an ascii string to an l_fp number
  */

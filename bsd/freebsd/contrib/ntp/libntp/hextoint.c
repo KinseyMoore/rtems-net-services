@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  * hextoint - convert an ascii string in hex to an unsigned
  *	      long, with error checking
