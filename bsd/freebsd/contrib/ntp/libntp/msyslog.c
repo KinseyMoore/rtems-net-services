@@ -96,7 +96,7 @@ format_errmsg(
  *		    For Windows, we have:
  *			#define errno_to_str isc_strerror
  */
-#if !defined(errno_to_str) || DEBUG
+#if !defined(errno_to_str) || DEBUG || defined(__rtems__)
 void
 errno_to_str(
 	int	err,

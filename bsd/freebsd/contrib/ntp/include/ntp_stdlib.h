@@ -36,9 +36,13 @@ extern	void	mvsyslog(int, const char *, va_list) NTP_PRINTF(2, 0);
 extern	void	init_logging	(const char *, u_int32, int);
 extern	int	change_logfile	(const char *, int);
 extern	void	setup_logfile	(const char *);
+#ifndef __rtems__
 #ifndef errno_to_str
 extern	void	errno_to_str(int, char *, size_t);
 #endif
+#else /* __rtems__ */
+extern	void	errno_to_str(int, char *, size_t);
+#endif /* __rtems__ */
 
 extern	int	xvsbprintf(char**, char* const, char const*, va_list) NTP_PRINTF(3, 0);
 extern	int	xsbprintf(char**, char* const, char const*, ...) NTP_PRINTF(3, 4);
