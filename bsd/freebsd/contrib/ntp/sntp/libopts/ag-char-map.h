@@ -29,9 +29,6 @@
 #ifndef AG_CHAR_MAP_H_GUARD
 #define AG_CHAR_MAP_H_GUARD 1
 
-#ifdef __rtems__
-#include <machine/rtems-bsd-program.h>
-#endif
 #ifdef HAVE_CONFIG_H
 # if defined(HAVE_INTTYPES_H)
 #   include <inttypes.h>

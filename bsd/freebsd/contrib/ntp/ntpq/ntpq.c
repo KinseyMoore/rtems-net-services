@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  * ntpq - query an NTP server using mode 6 commands
  */
@@ -47,7 +49,9 @@
 #  define CMAC "AES128CMAC"
 # endif
 #endif
+#ifndef __rtems__
 #include <ssl_applink.c>
+#endif /* __rtems__ */
 
 #include "ntp_libopts.h"
 #include "safecast.h"
@@ -57,6 +61,10 @@
 # define SERVER_PORT_NUM     123
 #endif
 
+#ifdef __rtems__
+#undef fflush
+#define fflush(fp)
+#endif /* __rtems__ */
 /* we use COMMAND as an autogen keyword */
 #ifdef COMMAND
 # undef COMMAND
@@ -87,16 +95,28 @@ te_Refid drefid = -1;
 /*
  * for get_systime()
  */
+#ifndef __rtems__
 s_char	sys_precision;		/* local clock precision (log2 s) */
+#else /* __rtems__ */
+extern s_char	sys_precision;
+#endif /* __rtems__ */
 
 /*
  * Keyid used for authenticated requests.  Obtained on the fly.
  */
+#ifndef __rtems__
 u_long info_auth_keyid = 0;
+#else /* __rtems__ */
+extern keyid_t info_auth_keyid;
+#endif /* __rtems__ */
 
 static	int	info_auth_keytype = NID_md5;	/* MD5 */
 static	size_t	info_auth_hashlen = 16;		/* MD5 */
+#ifndef __rtems__
 u_long	current_time;		/* needed by authkeys; not used */
+#else /* __rtems__ */
+extern u_long	current_time;
+#endif /* __rtems__ */
 
 /*
  * Flag which indicates we should always send authenticated requests
@@ -112,7 +132,6 @@ int rawmode = 0;
  * Packet version number we use
  */
 u_char pktversion = NTP_OLDVERSION + 1;
-
 
 /*
  * Format values
@@ -177,8 +196,12 @@ static const char *tstflagnames[] = {
 	"peer_unreach"		/* TEST13 */
 };
 
-
+#ifdef __rtems__
+#define BUILD_AS_LIB 1
+#define progname "ntpq"
+#else /* __rtems__ */
 int		ntpqmain	(int,	char **);
+#endif /* __rtems__ */
 /*
  * Built in command handler declarations
  */
@@ -322,7 +345,6 @@ struct xcmd builtins[] = {
 	  { "", "", "", "" }, "" }
 };
 
-
 /*
  * Default values we use.
  */
@@ -396,9 +418,11 @@ u_int numassoc;		/* number of cached associations */
 /*
  * For commands typed on the command line (with the -c option)
  */
+#ifndef __rtems__
 size_t numcmds = 0;
 const char *ccmds[MAXCMDS];
 #define	ADDCMD(cp)	if (numcmds < MAXCMDS) ccmds[numcmds++] = (cp)
+#endif /* __rtems__ */
 
 /*
  * When multiple hosts are specified.
@@ -445,8 +469,10 @@ chost chosts[MAXHOSTS];
 # define SETJMP(x)	setjmp((x))
 # define LONGJMP(x, v)	longjmp((x),(v))
 #endif
+#ifndef __rtems__
 static	JMP_BUF		interrupt_buf;
 static	volatile int	jump = 0;
+#endif /* __rtems__*/
 
 /*
  * Points at file being currently printed into
@@ -458,6 +484,7 @@ FILE *current_output = NULL;
  */
 extern struct xcmd opcmds[];
 
+#ifndef __rtems__
 char const *progname;
 
 #ifdef NO_MAIN_ALLOWED
@@ -491,7 +518,6 @@ main(
 	return ntpqmain(argc, argv);
 }
 #endif
-
 
 #ifndef BUILD_AS_LIB
 int
@@ -646,6 +672,7 @@ ntpqmain(
 	return 0;
 }
 #endif /* !BUILD_AS_LIB */
+#endif /* __rtems__ */
 
 /*
  * openhost - open a socket to a host
@@ -913,7 +940,13 @@ getresponse(
 	size_t ff;
 	int seenlastfrag;
 	int shouldbesize;
+#if __rtems__
+	extern fd_set* rtems_ntpq_fd_set;
+	extern size_t rtems_ntpq_fd_set_size;
+	#define fds (*rtems_ntpq_fd_set)
+#else /* __rtems__ */
 	fd_set fds;
+#endif /* __rtems__ */
 	int n;
 	int errcode;
 	/* absolute timeout checks. Not 'time_t' by intention! */
@@ -941,7 +974,11 @@ getresponse(
 
 	tobase = (uint32_t)time(NULL);
 	
+#if __rtems__
+	memset(&fds, 0, rtems_ntpq_fd_set_size);
+#else /* __rtems__ */
 	FD_ZERO(&fds);
+#endif /* __rtems__ */
 
 	/*
 	 * Loop until we have an error or a complete response.  Nearly all
@@ -1355,6 +1392,7 @@ sendrequest(
 	 * Get the keyid and the password if we don't have one.
 	 */
 	if (info_auth_keyid == 0) {
+#ifndef __rtems__
 		key_id = getkeyid("Keyid: ");
 		if (key_id == 0 || key_id > NTP_MAXKEY) {
 			fprintf(stderr,
@@ -1362,6 +1400,7 @@ sendrequest(
 			return 1;
 		}
 		info_auth_keyid = key_id;
+#endif /* __rtems__ */
 	}
 	if (!authistrusted(info_auth_keyid)) {
 		pass = getpass_keytype(info_auth_keytype);
@@ -3825,6 +3864,7 @@ grow_assoc_cache(void)
 }
 
 
+#ifndef __rtems__
 /*
  * ntpq_custom_opt_handler - autoopts handler for -c and -p
  *
@@ -4172,3 +4212,4 @@ my_easprintf(
 	return prc;
 }
 #endif /* !defined(BUILD_AS_LIB) */
+#endif /* __rtems__ */

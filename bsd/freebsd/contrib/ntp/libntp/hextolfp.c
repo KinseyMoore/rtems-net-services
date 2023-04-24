@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  * hextolfp - convert an ascii hex string to an l_fp number
  */

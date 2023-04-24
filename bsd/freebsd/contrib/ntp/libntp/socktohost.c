@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  * socktoa - return a numeric host name from a sockaddr_storage structure
  */

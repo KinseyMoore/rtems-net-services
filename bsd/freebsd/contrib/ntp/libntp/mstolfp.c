@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  * mstolfp - convert an ascii string in milliseconds to an l_fp number
  */

@@ -38,15 +38,36 @@
 #include <rtems/ntpd.h>
 #include <rtems/shell.h>
 
+#include <rtems/shellconfig-net-services.h>
+
 #include <net_adapter.h>
 #include <net_adapter_extra.h>
 #include <network-config.h>
+
+#include <rtems/telnetd.h>
 
 #include <tmacros.h>
 
 const char rtems_test_name[] = "NTP 1";
 
-#define NTP_DEBUG 2
+rtems_shell_env_t env;
+
+static void telnet_shell( char *name, void *arg )
+{
+  rtems_shell_dup_current_env( &env );
+
+  env.devname = name;
+  env.taskname = "NTPD";
+
+  rtems_shell_main_loop( &env );
+}
+
+rtems_telnetd_config_table rtems_telnetd_config = {
+  .command = telnet_shell,
+  .stack_size = 8 * RTEMS_MINIMUM_STACK_SIZE,
+};
+
+#define NTP_DEBUG 0
 #define ntp_xstr(s) ntp_str(s)
 #define ntp_str(s) #s
 #define NTP_DEBUG_STR ntp_xstr(NTP_DEBUG)
@@ -335,6 +356,9 @@ static const char etc_services[] =
     "ntp                123/tcp      # Network Time Protocol  [Dave_Mills] [RFC5905]\n"
     "ntp                123/udp      # Network Time Protocol  [Dave_Mills] [RFC5905]\n";
 
+static bool ntp_finished;
+static rtems_id ntpd_id;
+
 static void setup_etc(void)
 {
   int rv;
@@ -359,9 +383,10 @@ static void setup_etc(void)
 
 }
 
-static void run_test(void)
+static rtems_task ntpd_runner(
+  rtems_task_argument argument
+)
 {
-  rtems_status_code sc;
   char *argv[] = {
     "ntpd",
     "-g",
@@ -370,15 +395,49 @@ static void run_test(void)
 #endif
     NULL
   };
-  #define argc ((sizeof(argv) / sizeof(argv[0])) - 1)
+  const int argc = ((sizeof(argv) / sizeof(argv[0])) - 1);
+
+  (void)rtems_ntpd_run(argc, argv);
+  ntp_finished = true;
+}
+
+static void run_test(void)
+{
+  rtems_status_code sc;
+  char *argv[] = {
+    "ntpq",
+    "127.0.0.1",
+    NULL
+  };
+  const int argc = ((sizeof(argv) / sizeof(argv[0])) - 1);
 
   setup_etc();
 
+  rtems_shell_add_cmd_struct(&rtems_shell_NTPQ_Command);
+
+  sc = rtems_telnetd_start( &rtems_telnetd_config );
+  rtems_test_assert( sc == RTEMS_SUCCESSFUL );
+
   sc = rtems_shell_init("SHLL", 16 * 1024, 1, CONSOLE_DEVICE_NAME,
     false, false, NULL);
+  directive_failed( sc, "rtems_shell_init" );
   assert(sc == RTEMS_SUCCESSFUL);
 
-  (void)rtems_ntpd_run(argc, argv);
+  sc = rtems_task_create(
+    rtems_build_name( 'n', 't', 'p', 'd' ),
+    10,
+    8 * 1024,
+    RTEMS_TIMESLICE,
+    RTEMS_FLOATING_POINT,
+    &ntpd_id
+  );
+  directive_failed( sc, "rtems_task_create" );
+  sc = rtems_task_start( ntpd_id, ntpd_runner, 0 );
+  directive_failed( sc, "rtems_task_start of TA1" );
+
+  while (!ntp_finished) {
+    sleep(2);
+  }
 }
 
 static rtems_task Init( rtems_task_argument argument )

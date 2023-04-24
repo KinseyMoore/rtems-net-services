@@ -1,3 +1,4 @@
+#include <machine/rtems-bsd-user-space.h>
 
 /*
  * ntp_lineedit.h - generic interface to various line editing libs
@@ -10,4 +11,3 @@ void		ntp_readline_uninit(void);
  * strings returned by ntp_readline go home to free()
  */
 char *		ntp_readline(int *pcount);
-

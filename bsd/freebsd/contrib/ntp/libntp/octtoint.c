@@ -1,3 +1,5 @@
+#include <machine/rtems-bsd-user-space.h>
+
 /*
  * octtoint - convert an ascii string in octal to an unsigned
  *	      long, with error checking
