@@ -66,7 +66,7 @@ def net_config_header(bld):
     if not os.path.exists(bld.env.NET_CONFIG):
         bld.fatal('network configuraiton \'%s\' not found' %
                   (bld.env.NET_CONFIG))
-    net_manditory_tags = [
+    net_mandatory_tags = [
         'NET_CFG_IFACE',
         'NET_CFG_BOOT_PROT',
     ]
@@ -97,15 +97,15 @@ def net_config_header(bld):
                       'parse error: %d: %s' % (bld.env.NET_CONFIG, lc, l))
         lhs = ls[0].strip()
         rhs = ls[1].strip()
-        if lhs in net_manditory_tags or lhs in net_optional_tags:
+        if lhs in net_mandatory_tags or lhs in net_optional_tags:
             net_defaults[lhs] = rhs
         else:
             bld.fatal('network configuration \'%s\' ' \
                       'invalid config: %d: %s' % (bld.env.NET_CONFIG, lc, l))
-    for cfg in net_manditory_tags:
+    for cfg in net_mandatory_tags:
         if cfg not in net_defaults:
             bld.fatal('network configuration \'%s\' ' \
-                      'manditory config  not found: %s' % (bld.env.NET_CONFIG, cfg))
+                      'mandatory config  not found: %s' % (bld.env.NET_CONFIG, cfg))
     for cfg in net_defaults:
         sed += "-e 's/@%s@/%s/' " % (cfg, net_defaults[cfg])
     bld(target=bld.env.NETWORK_CONFIG,
