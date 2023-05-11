@@ -1,3 +1,5 @@
 NET_CFG_IFACE = lo0
 NET_CFG_IFACE_OPTS =
 NET_CFG_BOOT_PROT = dhcp
+NET_CFG_NTP_IP = 0.freebsd.pool.ntp.org
+NET_CFG_DNS_IP = 8.8.8.8

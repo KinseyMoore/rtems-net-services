@@ -73,19 +73,11 @@ rtems_telnetd_config_table rtems_telnetd_config = {
 #define NTP_DEBUG_STR ntp_xstr(NTP_DEBUG)
 
 static const char etc_resolv_conf[] =
-#ifdef NET_CFG_NTP_IP
     "nameserver " NET_CFG_DNS_IP "\n";
-#else
-    "nameserver 8.8.8.8\n";
-#endif
 
 static const char etc_ntp_conf[] =
     "tos minclock 3 maxclock 6\n"
-#ifdef NET_CFG_NTP_IP
-    "server " NET_CFG_NTP_IP "\n"
-#else
-    "pool 0.freebsd.pool.ntp.org iburst\n"
-#endif
+    "pool " NET_CFG_NTP_IP " iburst\n"
     "restrict default limited kod nomodify notrap noquery nopeer\n"
     "restrict source  limited kod nomodify notrap noquery\n"
     "restrict 10.0.0.0 mask 255.0.0.0\n"
