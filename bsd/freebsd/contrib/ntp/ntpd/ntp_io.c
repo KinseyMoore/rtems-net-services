@@ -199,17 +199,17 @@ static	struct refclockio *refio;
  */
 #ifdef __rtems__
 #include <rtems/libio_.h>
+static size_t rtems_ntpd_fds_size;
 static int rtems_fd_set_alloc(fd_set **setp) {
-	static size_t _fds_size;
 	if (*setp == NULL) {
-		_fds_size = sizeof(fd_set) * (howmany(rtems_libio_number_iops, sizeof(fd_set) * 8));
-		*setp = malloc(_fds_size);
+		rtems_ntpd_fds_size = sizeof(fd_set) * (howmany(rtems_libio_number_iops, sizeof(fd_set) * 8));
+		*setp = malloc(rtems_ntpd_fds_size);
 		if (*setp == NULL) {
 			errno = ENOMEM;
 			return -1;
 		}
+		memset(*setp, 0, rtems_ntpd_fds_size);
 	}
-	memset(*setp, 0, _fds_size);
 	return 0;
 }
 #define activefds (*activefds_prealloc)
@@ -3646,18 +3646,19 @@ io_handler(void)
 #if __rtems__
 	#define rdfdes (*rdfdes_prealloc)
 	static fd_set *rdfdes_prealloc;
-#else
+#else /* __rtems__ */
 	fd_set rdfdes;
-#endif
+#endif /* __rtems__ */
 	int nfound;
 
 #if __rtems__
 	if (rtems_fd_set_alloc(&rdfdes_prealloc) < 0) {
 		return;
 	}
-#else
+	memset(rdfdes_prealloc, 0, rtems_ntpd_fds_size);
+#else /* __rtems__ */
 	FD_ZERO(&set);
-#endif
+#endif /* __rtems__ */
 
 	/*
 	 * Use select() on all on all input fd's for unlimited

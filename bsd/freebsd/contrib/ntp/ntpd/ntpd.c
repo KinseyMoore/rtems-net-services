@@ -153,6 +153,7 @@
 #endif
 #else /* __rtems__ */
 #include <rtems/ntpd.h>
+#include <machine/rtems-bsd-program.h>
 #endif /* __rtems__ */
 
 #ifdef HAVE_DNSREGISTRATION
