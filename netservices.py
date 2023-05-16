@@ -226,9 +226,16 @@ def build(bld):
               source=ntp_source_files,
               includes=ntp_incl + [os.path.join(net_root, 'ntp')],
               cflags=cflags,
-              defines=[net_def, 'HAVE_CONFIG_H=1'] + ntpq_defines + bld.env.NTP_DEFINES,
+              defines=[net_def, 'HAVE_CONFIG_H=1'] + ntpq_defines +
+              bld.env.NTP_DEFINES,
               use=[net_use])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libntp.a"])
+    ntp_rtems_inc = bld.path.find_dir('bsd/rtemsbsd/include')
+    if ntp_rtems_inc != None:
+        bld.install_files(os.path.join("${PREFIX}", arch_lib_path, "include"),
+                          ntp_rtems_inc.ant_glob('**/**.h'),
+                          cwd=ntp_rtems_inc,
+                          relative_trick=True)
 
     ttcp_incl = inc + ['ttcp/include']
 
@@ -242,20 +249,6 @@ def build(bld):
               defines=[net_def],
               use=[net_use])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libttcp.a"])
-
-    def install_headers(root_path):
-        for root, dirs, files in os.walk(root_path):
-            for name in files:
-                ext = os.path.splitext(name)[1]
-                src_root = os.path.split(root)
-                path = os.path.join(src_root[0], src_root[1])
-                if ext == '.h':
-                    subpath = removeprefix(removeprefix(path, root_path), "/")
-                    bld.install_files(
-                        os.path.join("${PREFIX}", arch_lib_path, "include",
-                                     subpath), os.path.join(path, name))
-
-    [install_headers(path) for path in ntp_incl]
 
     libs = ['rtemstest']
 
