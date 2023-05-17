@@ -50,10 +50,31 @@ extern "C" {
  *
  * @param argv is the vector of arguments.
  *
- * @return This function should never return.  If it returns, then there is a
+ * @return This function only returns if @ref rtems_ntpd_stop is
+ *   called or the daemon is already running  Any other reason is a
  *   serious error.
  */
 int rtems_ntpd_run(int argc, char **argv);
+
+/**
+ * @brief Stops the NTP daemon (nptd).
+ *
+ * The ntpd loop will exit when it next runs cleaning up. Use the
+ * @ref rtems_ntpd_running call to check if the daemon has stopped
+ * running.
+ *
+ * @return This function should never return.  If it returns, then there is a
+ *   serious error.
+ */
+void rtems_ntpd_stop(void);
+
+/**
+ * @brief Checks if the NTP daemon (nptd) is running?
+ *
+ * @return Return 1 if ntpd is running else 0 is returned.
+ */
+int rtems_ntpd_running(void);
+
 
 #ifdef __cplusplus
 }

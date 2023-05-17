@@ -152,6 +152,7 @@
 #endif
 #endif
 #else /* __rtems__ */
+#include <rtems/thread.h>
 #include <rtems/ntpd.h>
 #include <machine/rtems-bsd-program.h>
 #endif /* __rtems__ */
@@ -261,6 +262,10 @@ char **	saved_argv;
 
 #ifndef SIM
 #ifdef __rtems__
+static rtems_mutex ntpd_lock = RTEMS_MUTEX_INITIALIZER("ntpd");
+static bool ntpd_running;
+int rtems_ntpd_log_to_term;
+
 static
 #endif /* __rtems__ */
 int		ntpdmain		(int, char **);
@@ -1409,8 +1414,19 @@ int scmp_sc[] = {
 
 	for (;;) {
 #if !defined(SIM) && defined(SIGDIE1)
+#ifdef __rtems__
+		rtems_mutex_lock(&ntpd_lock);
+#endif /* __rtems__ */
 		if (signalled)
+#ifdef __rtems__
+		{
+			rtems_mutex_unlock(&ntpd_lock);
+#endif /* __rtems__ */
 			finish_safe(signo);
+#ifdef __rtems__
+		}
+		rtems_mutex_unlock(&ntpd_lock);
+#endif /* __rtems__ */
 #endif
 		GetReceivedBuffers();
 # else /* normal I/O */
@@ -1420,8 +1436,19 @@ int scmp_sc[] = {
 
 	for (;;) {
 #if !defined(SIM) && defined(SIGDIE1)
+#ifdef __rtems__
+		rtems_mutex_lock(&ntpd_lock);
+#endif /* __rtems__ */
 		if (signalled)
+#ifdef __rtems__
+		{
+			rtems_mutex_unlock(&ntpd_lock);
+#endif /* __rtems__ */
 			finish_safe(signo);
+#ifdef __rtems__
+		}
+		rtems_mutex_unlock(&ntpd_lock);
+#endif /* __rtems__ */
 #endif		
 		if (alarm_flag) {	/* alarmed? */
 			was_alarmed = TRUE;
@@ -1543,8 +1570,40 @@ int scmp_sc[] = {
 int
 rtems_ntpd_run(int argc, char **argv)
 {
+	int r;
+	rtems_mutex_lock(&ntpd_lock);
+	if (ntpd_running) {
+		rtems_mutex_unlock(&ntpd_lock);
+		return -1;
+	}
+	rtems_ntpd_log_to_term = 0;
+	syslogit = FALSE;
+	signalled = 0;
+	ntpd_running = true;
+	rtems_mutex_unlock(&ntpd_lock);
+	r = rtems_bsd_program_call_main("ntpd", ntpdmain, argc, argv);
+	rtems_mutex_lock(&ntpd_lock);
+	ntpd_running = false;
+	rtems_mutex_unlock(&ntpd_lock);
+	return r;
+}
 
-	return (rtems_bsd_program_call_main("ntpd", ntpdmain, argc, argv));
+void
+rtems_ntpd_stop(void)
+{
+	rtems_mutex_lock(&ntpd_lock);
+	signalled = 1;
+	rtems_mutex_unlock(&ntpd_lock);
+}
+
+int
+rtems_ntpd_running(void)
+{
+	int r;
+	rtems_mutex_lock(&ntpd_lock);
+	r = ntpd_running ? 1 : 0;
+	rtems_mutex_unlock(&ntpd_lock);
+	return r;
 }
 #endif /* __rtems__ */
 #endif	/* !SIM */

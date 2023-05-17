@@ -158,6 +158,9 @@ addto_syslog(
 	const char *	nl_or_empty;
 	const char *	human_time;
 
+#ifdef __rtems__
+	extern int rtems_ntpd_log_to_term;
+#endif /* __rtems__ */
 	/* setup program basename static var prog if needed */
 	if (progname != prevcall_progname) {
 		prevcall_progname = progname;
@@ -178,6 +181,9 @@ addto_syslog(
 		if (syslog_file != NULL)
 			log_to_file = TRUE;
 		else
+#ifdef __rtems__
+			if (rtems_ntpd_log_to_term)
+#endif /* __rtems__ */
 			log_to_term = TRUE;
 #if DEBUG
 	if (debug > 0)
@@ -419,6 +425,7 @@ init_logging(
 		*cp = '\0';
 #endif
 
+#ifndef __rtems__
 #if !defined(VMS)
 
 	if (is_daemon)
@@ -441,6 +448,7 @@ init_logging(
 		setlogmask(LOG_UPTO(LOG_DEBUG)); /* @@@ was INFO */
 # endif /* LOG_DAEMON */
 #endif	/* !VMS */
+#endif /* __rtems__ */
 }
 
 
