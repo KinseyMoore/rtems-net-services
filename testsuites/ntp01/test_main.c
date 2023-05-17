@@ -348,7 +348,7 @@ static const char etc_services[] =
     "ntp                123/tcp      # Network Time Protocol  [Dave_Mills] [RFC5905]\n"
     "ntp                123/udp      # Network Time Protocol  [Dave_Mills] [RFC5905]\n";
 
-static bool ntp_finished;
+static int ntp_run_count;
 static rtems_id ntpd_id;
 
 static void setup_etc(void)
@@ -379,18 +379,22 @@ static rtems_task ntpd_runner(
   rtems_task_argument argument
 )
 {
-  char *argv[] = {
-    "ntpd",
-    "-g",
+  while (ntp_run_count++ < 2) {
+    char *argv[] = {
+      "ntpd",
+      "-g",
 #if NTP_DEBUG
-    "--set-debug-level=" NTP_DEBUG_STR,
+      "--set-debug-level=" NTP_DEBUG_STR,
 #endif
-    NULL
-  };
-  const int argc = ((sizeof(argv) / sizeof(argv[0])) - 1);
+      NULL
+    };
+    const int argc = ((sizeof(argv) / sizeof(argv[0])) - 1);
+    int r;
 
-  (void)rtems_ntpd_run(argc, argv);
-  ntp_finished = true;
+    printf("ntpd starting\n");
+    r = rtems_ntpd_run(argc, argv);
+    printf("ntpd finished: %d\n", r);
+  }
 }
 
 static void run_test(void)
@@ -402,6 +406,7 @@ static void run_test(void)
     NULL
   };
   const int argc = ((sizeof(argv) / sizeof(argv[0])) - 1);
+  int restart_secs = 0;
 
   setup_etc();
 
@@ -427,9 +432,18 @@ static void run_test(void)
   sc = rtems_task_start( ntpd_id, ntpd_runner, 0 );
   directive_failed( sc, "rtems_task_start of TA1" );
 
-  while (!ntp_finished) {
+  sleep(1);
+
+  while (rtems_ntpd_running()) {
     sleep(2);
+    restart_secs += 2;
+    if (restart_secs == 10) {
+      printf("ntpd forced stop\n");
+      rtems_ntpd_stop();
+      sleep(2);
+    }
   }
+  printf("ntpd: not running!\n");
 }
 
 static rtems_task Init( rtems_task_argument argument )
