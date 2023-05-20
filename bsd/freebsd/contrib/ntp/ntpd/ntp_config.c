@@ -223,6 +223,9 @@ int *p_bcXXXX_enabled = &bc_list[0].enabled;
 
 /* FUNCTION PROTOTYPES */
 
+#ifdef __rtems__
+#define FREE_CFG_T
+#endif /* __rtems__ */
 static void init_syntax_tree(config_tree *);
 static void apply_enable_disable(attr_val_fifo *q, int enable);
 
@@ -375,6 +378,25 @@ static int getnetnum(const char *num, sockaddr_u *addr, int complain,
 
 #endif
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+void rtems_ntp_config_globals_fini(void);
+void rtems_ntp_config_globals_fini(void) {
+	free_all_config_trees();
+	cur_memlock = -1;
+	RTEMS_NTP_CLEAR(cfgt);
+	cfg_tree_history = NULL;
+	RTEMS_NTP_CLEAR(sys_phone);
+	strlcpy(default_keysdir, NTP_KEYSDIR, sizeof(default_keysdir));
+	saveconfigdir = NULL;
+	config_priority_override = 0;
+	strlcpy(default_ntp_signd_socket, NTP_SIGND_PATH, sizeof(default_ntp_signd_socket));
+	RTEMS_NTP_CLEAR(remote_config);
+	old_config_style = 1;
+	cryptosw = 0;
+	stats_drift_file = NULL;
+}
+#endif /* __rtems__ */
 #if defined(__GNUC__) /* this covers CLANG, too */
 static void  __attribute__((noreturn,format(printf,1,2))) fatal_error(const char *fmt, ...)
 #elif defined(_MSC_VER)

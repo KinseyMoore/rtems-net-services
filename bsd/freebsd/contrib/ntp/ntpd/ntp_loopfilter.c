@@ -193,6 +193,60 @@ static sigjmp_buf env;		/* environment var. for pll_trap() */
 #endif /* SIGSYS */
 #endif /* KERNEL_PLL */
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+void rtems_ntp_loopfilter_globals_fini(void);
+void rtems_ntp_loopfilter_globals_fini(void) {
+	clock_max_back = CLOCK_MAX;
+	clock_max_fwd =  CLOCK_MAX;
+	clock_minstep = CLOCK_MINSTEP;
+	clock_panic = CLOCK_PANIC;
+	clock_phi = CLOCK_PHI;
+	allan_xpt = CLOCK_ALLAN;
+	clock_offset = 0;
+	clock_jitter = 0;
+	drift_comp = 0;
+	init_drift_comp = 0;
+	clock_stability = 0;
+	clock_codec = 0;
+	clock_epoch = 0;
+	sys_tai = 0;
+	loop_started = 0;
+	RTEMS_NTP_CLEAR(relative_path);
+	this_file = NULL;
+	ntp_enable = TRUE;
+	pll_control = 0;
+	kern_enable = TRUE;
+	hardpps_enable;
+	ext_enable = 0;
+	pps_stratum = 0;
+	kernel_status = 0;
+	force_step_once = FALSE;
+	mode_ntpdate = FALSE;
+	freq_cnt = 0;
+	freq_set = 0;
+	state = 0;
+	sys_poll = 0;
+	tc_counter = 0;
+	last_offset = 0.0;
+
+/*
+ * Clock state machine variables
+ */
+int	state = 0;		/* clock discipline state */
+u_char	sys_poll;		/* time constant/poll (log2 s) */
+int	tc_counter;		/* jiggle counter */
+double	last_offset;		/* last offset (s) */
+
+/*
+ * Huff-n'-puff filter variables
+ */
+static double *sys_huffpuff;	/* huff-n'-puff filter */
+static int sys_hufflen;		/* huff-n'-puff filter stages */
+static int sys_huffptr;		/* huff-n'-puff filter pointer */
+static double sys_mindly;	/* huff-n'-puff filter min delay */
+}
+#endif /* __rtems__ */
 static void
 sync_status(const char *what, int ostatus, int nstatus)
 {

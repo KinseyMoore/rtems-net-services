@@ -121,6 +121,40 @@ static char *		roptoa(restrict_op op);
 
 void	dump_restricts(void);
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+void rtems_ntp_restrict_globals_fini(void);
+void rtems_ntp_restrict_globals_fini(void) {
+	restrict_u* res;
+	restrict_u* next;
+	for (res = restrictlist4; res != NULL; res = next) {
+		next = res->link;
+		if (res != &restrict_def4) {
+			free_res(res, 0);
+		}
+	}
+	for (res = restrictlist6; res != NULL; res = next) {
+		next = res->link;
+		if (res != &restrict_def6) {
+			free_res(res, 1);
+		}
+	}
+	restrictlist4 = NULL;
+	restrictlist6 = NULL;
+	restrictcount = 0;
+	/* resfree4 and resfree6 hold free structs to use, leave them */
+	res_calls = 0;
+	res_found = 0;
+	res_not_found = 0;
+	res_limited_refcnt = 0;
+	RTEMS_NTP_CLEAR(restrict_def4);
+	RTEMS_NTP_CLEAR(restrict_def6);
+	restrict_source_enabled = 0;
+	restrict_source_rflags = 0;
+	restrict_source_mflags = 0;
+	restrict_source_ippeerlimit = 0;
+}
+#endif /* __rtems__ */
 /*
  * dump_restrict - spit out a restrict_u
  */

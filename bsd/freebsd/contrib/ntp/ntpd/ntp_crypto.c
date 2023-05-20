@@ -4171,4 +4171,8 @@ exten_payload_size(
 }
 # else	/* !AUTOKEY follows */
 int ntp_crypto_bs_pubkey;
+void rtems_ntp_crypto_globals_ini(void);
+void rtems_ntp_crypto_globals_ini(void) {
+	ntp_crypto_bs_pubkey = 0;
+}
 # endif	/* !AUTOKEY */

@@ -213,6 +213,80 @@ void	pool_name_resolved	(int, int, void *, const char *,
 const char *	amtoa		(int am);
 
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+static struct endpoint *endpoint = NULL;
+static int *indx = NULL;
+static peer_select *peers = NULL;
+static u_int endpoint_size = 0;
+static u_int peers_size = 0;
+static u_int indx_size = 0;
+void rtems_ntp_proto_globals_fini(void);
+void rtems_ntp_proto_globals_fini(void) {
+	sys_leap = 0;
+	xmt_leap = 0;
+	sys_stratum = 0;
+	sys_precision = 0;
+	sys_rootdelay = 0;
+	sys_rootdelay = 0.0;
+	sys_rootdisp = 0.0;
+	sys_refid = 0;
+	RTEMS_NTP_CLEAR(sys_reftime);
+	sys_peer = NULL;
+	sys_bclient = 0;
+	sys_bdelay = 0.0;
+	sys_authenticate = 0;
+	RTEMS_NTP_CLEAR(sys_authdelay);
+	sys_offset = 0.0;
+	sys_mindisp = MINDISPERSE;
+	sys_maxdist = MAXDISTANCE;
+	sys_jitter = 0.0;
+	sys_epoch = 0U;
+	sys_clockhop = 0.0;
+	leap_vote_ins = 0;
+	leap_vote_del = 0;
+	sys_private = 0;
+	sys_manycastserver = 0;
+	ntp_mode7 = 0;
+	peer_ntpdate = 0;
+	sys_survivors = 0;
+	sys_ident = NULL;
+	sys_floor = 0;
+	sys_bcpollbstep = 0;
+	sys_ceiling = STRATUM_UNSPEC - 1;
+	sys_minsane = 1;
+	sys_minclock = NTP_MINCLOCK;
+	sys_maxclock = NTP_MAXCLOCK;
+	sys_cohort = 0;
+	sys_orphan = STRATUM_UNSPEC + 1;
+	sys_orphwait = NTP_ORPHWAIT;
+	sys_beacon = BEACON;
+	sys_ttlmax = 0;
+	memset(sys_ttl, 0, sizeof(sys_ttl));
+	sys_stattime = 0U;
+	sys_received = 0U;
+	sys_processed = 0U;
+	sys_newversion = 0U;
+	sys_oldversion = 0U;
+	sys_restricted = 0U;
+	sys_badlength = 0U;
+	sys_badauth = 0U;
+	sys_declined = 0U;
+	sys_limitrejected = 0U;
+	sys_kodsent = 0U;
+	peer_clear_digest_early	= 1;
+	unpeer_crypto_early = 1;
+	unpeer_crypto_nak_early	= 1;
+	unpeer_digest_early	= 1;
+	dynamic_interleave = DYNAMIC_INTERLEAVE;
+	free(endpoint);
+	endpoint = NULL;
+	indx = NULL;
+	endpoint_size = 0;
+	peers_size = 0;
+	indx_size = 0;
+}
+#endif /* __rtems__ */
 void
 set_sys_leap(
 	u_char new_sys_leap
@@ -3351,12 +3425,14 @@ clock_select(void)
 	struct peer *typelocal = NULL;
 	struct peer *typepps = NULL;
 #endif /* REFCLOCK */
+#ifndef __rtems__
 	static struct endpoint *endpoint = NULL;
 	static int *indx = NULL;
 	static peer_select *peers = NULL;
 	static u_int endpoint_size = 0;
 	static u_int peers_size = 0;
 	static u_int indx_size = 0;
+#endif /* __rtems__ */
 	size_t octets;
 
 	/*

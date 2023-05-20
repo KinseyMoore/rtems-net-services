@@ -98,6 +98,20 @@ u_char	ntp_minpoll = NTP_MINPOLL;	/* increment (log 2 s) */
 			MRU_MAXDEPTH_DEF;
 	int	mon_age = 3000;		/* preemption limit */
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+void rtems_ntp_monitor_globals_fini(void);
+void rtems_ntp_monitor_globals_fini(void) {
+	mon_stop(MON_ON | MON_RES);
+	ntp_minpkt = NTP_MINPKT;
+	ntp_minpoll = NTP_MINPOLL;
+	mon_enabled = 0;
+	mru_mindepth = 600;
+	mru_maxage = 64;
+	mru_maxdepth = MRU_MAXDEPTH_DEF;
+	mon_age = 3000;
+}
+#endif /* __rtems__ */
 static	void		mon_getmoremem(void);
 static	void		remove_from_hash(mon_entry *);
 static	inline void	mon_free_entry(mon_entry *);
@@ -498,5 +512,3 @@ ntp_monitor(
 
 	return mon->flags;
 }
-
-

@@ -822,6 +822,63 @@ static	char *reqend;
 #define MIN(a, b) (((a) <= (b)) ? (a) : (b))
 #endif
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+void rtems_ntp_control_globals_fini(void);
+void rtems_ntp_control_globals_fini(void) {
+	if (ext_sys_var != NULL) {
+		const u_short cv = count_var(ext_sys_var);
+		struct ctl_var *k;
+		u_short c;
+		k = ext_sys_var;
+		for (c = 0; c < cv; ++c) {
+			if (k[c].text != NULL) {
+			  free((void*) k[c].text);
+			}
+		}
+		free(ext_sys_var);
+		ext_sys_var = NULL;
+	}
+	RTEMS_NTP_CLEAR(ctl_traps);
+	num_ctl_traps = 0;
+	RTEMS_NTP_CLEAR(ctl_auth_keyid);
+	ctl_sys_last_event = 0;
+	ctl_sys_num_events = 0;
+	ctltimereset = 0U;
+	numctlreq = 0U;
+	numctlbadpkts = 0U;
+	numctlresponses = 0U;
+	numctlfrags = 0U;
+	numctlerrors = 0U;
+	numctltooshort = 0U;
+	numctlinputresp = 0U;
+	numctlinputfrag = 0U;
+	numctlinputerr = 0U;
+	numctlbadoffset = 0U;
+	numctlbadversion = 0U;
+	numctldatatooshort = 0U;
+	numctlbadop = 0U;
+	numasyncmsgs = 0U;
+	RTEMS_NTP_CLEAR(rpkt);
+	res_version = 0U;
+	res_opcode = 0U;
+	res_associd = 0U;
+	res_frags = 0U;
+	res_offset = 0U;
+	datapt = NULL;
+	dataend = NULL;
+	datalinelen = 0;
+	datasent = 0;
+	datalinelen = 0;
+	datanotbinflag = 0;
+	lcl_inter = NULL;
+	res_authenticate = 0U;
+	res_authokay = 0U;
+	res_keyid = 0U;
+	reqpt = NULL;
+	reqend = NULL;
+}
+#endif /* __rtems__ */
 /*
  * init_control - initialize request data
  */

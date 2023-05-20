@@ -228,6 +228,36 @@ static	void		getnameinfo_sometime_complete(blocking_work_req,
 						      void *);
 
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+static u_int shared_ctx = UINT_MAX;
+void rtems_ntp_intres_globals_fini(void) {
+	if (dnschild_contexts != NULL) {
+	int c;
+	for (c = 0; c < dnschild_contexts_alloc; c++) {
+		if (NULL != dnschild_contexts[c]) {
+				free(dnschild_contexts[c]);
+			}
+		}
+		free(dnschild_contexts);
+		dnschild_contexts = NULL;
+	}
+	dnschild_contexts_alloc = 0;
+	if (dnsworker_contexts != NULL) {
+		int c;
+		for (c = 0; c < dnsworker_contexts_alloc; c++) {
+			if (NULL != dnsworker_contexts[c]) {
+				free(dnsworker_contexts[c]);
+		}
+	}
+		free(dnsworker_contexts);
+		dnsworker_contexts = NULL;
+	}
+	dnsworker_contexts_alloc = 0;
+	RTEMS_NTP_CLEAR(next_res_init);
+	shared_ctx = UINT_MAX;
+}
+#endif /* __rtems__ */
 /* === functions === */
 /*
  * getaddrinfo_sometime - uses blocking child to call getaddrinfo then
@@ -957,7 +987,9 @@ reserve_dnschild_ctx(void)
 static u_int
 get_dnschild_ctx(void)
 {
+#ifndef __rtems__
 	static u_int	shared_ctx = UINT_MAX;
+#endif /* __rtems__ */
 
 	if (worker_per_query)
 		return reserve_dnschild_ctx();

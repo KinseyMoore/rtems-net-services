@@ -10,6 +10,16 @@
 #include "ntp_stdlib.h"
 
 
+#ifdef __rtems__
+#ifdef EREALLOC_IMPL
+static void *rtems_ntp_realloc(void *ptr, size_t size, const char* file, int line) {
+	void* mem = realloc(ptr, size);
+	printf("[EREMALLOC] %s:%d: ptr=%p mem=%p..%p newsz=%zu\n",
+		   file, line, ptr, mem, mem + size, size);
+	return mem;
+}
+#endif /* EREALLOC_IMPL */
+#endif /* __rtems__ */
 /*
  * When using the debug MS CRT allocator, each allocation stores the
  * callsite __FILE__ and __LINE__, which is then displayed at process

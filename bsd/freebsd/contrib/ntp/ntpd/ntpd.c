@@ -1567,22 +1567,78 @@ int scmp_sc[] = {
 	return 1;
 }
 #ifdef __rtems__
+/*
+ * Manual variable destruction. We only destruct so the variables are
+ * left ready to run. Any heap memory is freed.
+ *
+ * Note, there are some places where the memory is not freed back to
+ *       the heap because there is no clean means to do this. The
+ *       related should be cleared or clean and made available for the
+ *       next run.
+ */
+extern void rtems_ntp_config_globals_fini(void);
+extern void rtems_ntp_control_globals_fini(void);
+extern void rtems_ntp_intres_globals_fini(void);
+extern void rtems_ntp_io_globals_fini(void);
+extern void rtems_ntp_loopfilter_globals_fini(void);
+extern void rtems_ntp_monitor_globals_fini(void);
+extern void rtems_ntp_peer_globals_fini(void);
+extern void rtems_ntp_proto_globals_fini(void);
+extern void rtems_ntp_request_globals_fini(void);
+extern void rtems_ntp_restrict_globals_fini(void);
+extern void rtems_ntp_timer_globals_fini(void);
+extern void rtems_ntp_worker_globals_fini(void);
+extern void leapsec_ut_pristine(void);
+
+static void
+rtems_ntpd_cleanup(void) {
+	rtems_ntp_peer_globals_fini();
+	rtems_ntp_control_globals_fini();
+	rtems_ntp_worker_globals_fini();
+	rtems_ntp_intres_globals_fini();
+	rtems_ntp_proto_globals_fini();
+	rtems_ntp_io_globals_fini();
+	rtems_ntp_request_globals_fini();
+	rtems_ntp_restrict_globals_fini();
+	rtems_ntp_loopfilter_globals_fini();
+	rtems_ntp_timer_globals_fini();
+	rtems_ntp_monitor_globals_fini();
+	rtems_ntp_config_globals_fini();
+	leapsec_ut_pristine();
+}
+
 int
 rtems_ntpd_run(int argc, char **argv)
 {
+	int arg;
 	int r;
 	rtems_mutex_lock(&ntpd_lock);
 	if (ntpd_running) {
 		rtems_mutex_unlock(&ntpd_lock);
 		return -1;
 	}
+	priority_done = 2;
+	was_alarmed = 0;
+	listen_to_virtual_ips = TRUE;
+	signalled = 0;
+	signo = 0;
+	cmdline_server_count = 0;
+	cmdline_servers = NULL;
+	cur_memlock = -1;
 	rtems_ntpd_log_to_term = 0;
 	syslogit = FALSE;
-	signalled = 0;
+	for (arg = 0; arg < argc; ++arg) {
+		const char* debug_opt = "--set-debug-level=";
+		const size_t debug_opt_len = strlen(debug_opt);
+		if (strncmp(debug_opt, argv[arg], debug_opt_len) == 0) {
+			rtems_ntpd_log_to_term = 1;
+		}
+	}
 	ntpd_running = true;
 	rtems_mutex_unlock(&ntpd_lock);
 	r = rtems_bsd_program_call_main("ntpd", ntpdmain, argc, argv);
 	rtems_mutex_lock(&ntpd_lock);
+	rtems_ntpd_cleanup();
 	ntpd_running = false;
 	rtems_mutex_unlock(&ntpd_lock);
 	return r;
@@ -1634,6 +1690,9 @@ finish_safe(
 		DNSServiceRefDeallocate(mdns);
 # endif
 	peer_cleanup();
+#ifdef __rtems__
+	rtems_ntpd_cleanup();
+#endif /* __rtems__ */
 	exit(0);
 }
 

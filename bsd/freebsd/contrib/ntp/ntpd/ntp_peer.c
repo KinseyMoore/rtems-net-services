@@ -125,6 +125,28 @@ static void		getmorepeermem(void);
 static int		score(struct peer *);
 
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+void rtems_ntp_peer_globals_fini(void);
+void rtems_ntp_peer_globals_fini(void) {
+	/* we cannot clean up the peers list because eallocarray keeps
+	 * no base to free; move to free */
+	while (peer_list != NULL) {
+		unpeer(peer_list);
+	}
+	current_association_ID = 0;
+	initial_association_ID = 0;
+	peer_timereset = 0;
+	findpeer_calls = 0;
+	assocpeer_calls = 0;
+	peer_allocations = 0;
+	peer_demobilizations = 0;
+	total_peer_structs = 0;
+	total_peer_structs = 0;
+	peer_associations = 0;
+	peer_preempt = 0;
+}
+#endif /* __rtems__ */
 /*
  * init_peer - initialize peer data structures and counters
  *
