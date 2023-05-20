@@ -227,6 +227,27 @@ static int usingexbuf;
 static sockaddr_u *toaddr;
 static endpt *frominter;
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+void rtems_ntp_request_globals_fini(void);
+void rtems_ntp_request_globals_fini(void) {
+	info_auth_keyid = 0;
+	numrequests = 0U;
+	numresppkts = 0U;
+	RTEMS_NTP_CLEAR(errorcounter);
+	auth_timereset = 0U;
+	RTEMS_NTP_CLEAR(rpkt);
+	reqver = 0;
+	seqno = 0;
+	nitems = 0;
+	itemsize = 0;
+	databytes = 0;
+	RTEMS_NTP_CLEAR(exbuf);
+	usingexbuf = 0;
+	toaddr = NULL;
+	frominter = NULL;
+}
+#endif /* __rtems__ */
 /*
  * init_request - initialize request data
  */
@@ -2786,4 +2807,3 @@ do_if_reload(
 	
 	flush_pkt();
 }
-

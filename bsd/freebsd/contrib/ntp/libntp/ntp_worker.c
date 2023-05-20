@@ -33,6 +33,36 @@ volatile u_int		blocking_child_ready_seen;
 volatile u_int		blocking_child_ready_done;
 
 
+#ifdef __rtems__
+#define RTEMS_NTP_CLEAR(_var) memset(&_var, 0, sizeof(_var))
+static u_int intres_slot = UINT_MAX;
+void rtems_ntp_worker_globals_fini(void);
+void rtems_ntp_worker_globals_fini(void) {
+	size_t idx;
+	while (intres_req_pending > 0) {
+		harvest_blocking_responses();
+		usleep(10 * 1000UL);
+	}
+	for (idx = 0; idx < blocking_children_alloc; idx++) {
+		blocking_child* c = blocking_children[idx];
+		if (c != NULL) {
+			blocking_children[idx] = NULL;
+			req_child_exit(c);
+			while (!c->reusable) {
+				usleep(10 * 1000UL);
+				process_blocking_resp(c);
+			}
+			free(c);
+		}
+	}
+	if (blocking_children != NULL) {
+		free(blocking_children);
+		blocking_children = NULL;
+		blocking_children_alloc = 0;
+	}
+	intres_slot = UINT_MAX;
+}
+#endif /* __rtems__ */
 #ifndef HAVE_IO_COMPLETION_PORT
 /*
  * pipe_socketpair()
@@ -172,7 +202,9 @@ queue_blocking_request(
 	void *			context
 	)
 {
+#ifndef __rtems__
 	static u_int		intres_slot = UINT_MAX;
+#endif /* __rtems__ */
 	u_int			child_slot;
 	blocking_child *	c;
 	blocking_pipe_header	req_hdr;

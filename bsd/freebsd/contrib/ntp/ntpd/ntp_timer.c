@@ -132,6 +132,28 @@ void	set_timer_or_die(const intervaltimer *);
 #endif
 
 
+#ifdef __rtems__
+void rtems_ntp_timer_globals_fini(void);
+void rtems_ntp_timer_globals_fini(void) {
+	interface_interval = 0;
+	initializing = 0;
+	alarm_flag = 0;
+	interface_timer = 0U;
+	adjust_timer = 0U;
+	stats_timer = 0U;
+	leapf_timer = 0U;
+	huffpuff_timer = 0U;
+	worker_idle_timer = 0U;
+	leapsec = 0U;
+	leapdif = 0;
+	orphwait = 0U;
+	alarm_overflow = 0U;
+	current_time = 0U;
+	timer_timereset = 0U;
+	timer_overflows = 9U;
+	timer_xmtcalls = 0U;
+}
+#endif /* __rtems__ */
 #if !defined(SYS_WINNT) && !defined(VMS)
 void
 set_timer_or_die(

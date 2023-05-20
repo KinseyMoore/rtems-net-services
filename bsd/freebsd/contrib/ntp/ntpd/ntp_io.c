@@ -372,6 +372,50 @@ static void 		input_handler		(l_fp*);
 #endif
 
 
+#ifdef __rtems__
+static int rtems_ntp_already_opened;
+#define already_opened rtems_ntp_already_opened
+void rtems_ntp_io_globals_fini(void);
+void rtems_ntp_io_globals_fini(void) {
+	while (ep_list != NULL) {
+		remove_interface(ep_list);
+	}
+	ep_list = NULL;
+	any_interface = NULL;
+	any6_interface = NULL;
+	loopback_interface = NULL;
+	mc4_list = NULL;
+	mc6_list = NULL;
+	wildipv4 = NULL;
+	wildipv6 = NULL;
+	while (fd_list != NULL) {
+		close_and_delete_fd_from_list(fd_list->fd);
+	}
+	fd_list = NULL;
+	while (remoteaddr_list != NULL) {
+		delete_addr_from_list(&remoteaddr_list->addr);
+	}
+	remoteaddr_list = NULL;
+	already_opened = 0;
+	packets_dropped = 0;
+	packets_ignored = 0;
+	packets_received = 0;
+	packets_sent = 0;
+	packets_notsent = 0;
+	handler_calls = 0;
+	handler_pkts = 0;
+	io_timereset = 0;
+	broadcast_client_enabled = 0;
+	sys_ifnum = 0;
+	ninterfaces = 0;
+	disable_dynamic_updates = 0;
+	sys_interphase = 0;
+	if (activefds_prealloc != NULL) {
+		memset(activefds_prealloc, 0, rtems_ntpd_fds_size);
+	}
+	maxactivefd = 0;
+}
+#endif /* __rtems__ */
 #ifndef HAVE_IO_COMPLETION_PORT
 void
 maintain_activefds(
@@ -399,6 +443,9 @@ maintain_activefds(
 	} else {
 		FD_CLR(fd, &activefds);
 		if (maxactivefd && fd == maxactivefd) {
+#ifdef __rtems__
+			maxactivefd = 0;
+#endif /* __rtems__ */
 			for (i = maxactivefd - 1; i >= 0; i--)
 				if (FD_ISSET(i, &activefds)) {
 					maxactivefd = i;
@@ -519,7 +566,9 @@ ntpd_addremove_io_fd(
 void
 io_open_sockets(void)
 {
+#ifndef __rtems__
 	static int already_opened;
+#endif /* __rtems__ */
 
 	if (already_opened || HAVE_OPT( SAVECONFIGQUIT ))
 		return;
@@ -1049,7 +1098,6 @@ remove_interface(
 		close_and_delete_fd_from_list(ep->fd);
 		ep->fd = INVALID_SOCKET;
 	}
-
 	if (ep->bfd != INVALID_SOCKET) {
 		msyslog(LOG_INFO,
 			"stop listening for broadcasts to %s on interface #%d %s",
@@ -2101,7 +2149,9 @@ create_sockets(
 	 * I/O Completion Ports don't care about the select and FD_SET
 	 */
 	maxactivefd = 0;
+#ifndef __rtems__
 	FD_ZERO(&activefds);
+#endif /* __rtems__ */
 #endif
 
 	DPRINTF(2, ("create_sockets(%d)\n", port));
@@ -4639,6 +4689,11 @@ delete_addr_from_list(
 {
 	remaddr_t *unlinked;
 
+#ifdef __rtems__
+	if (remoteaddr_list == NULL) {
+		return;
+	}
+#endif /* __rtems__ */
 	UNLINK_EXPR_SLIST(unlinked, remoteaddr_list, SOCK_EQ(addr,
 		&(UNLINK_EXPR_SLIST_CURRENT()->addr)), link, remaddr_t);
 
@@ -4657,7 +4712,11 @@ delete_interface_from_list(
 {
 	remaddr_t *unlinked;
 
+#ifndef __rtems__
 	for (;;) {
+#else /* __rtems__ */
+	for (;remoteaddr_list != NULL;) {
+#endif /* __rtems__ */
 		UNLINK_EXPR_SLIST(unlinked, remoteaddr_list, iface ==
 		    UNLINK_EXPR_SLIST_CURRENT()->ep, link,
 		    remaddr_t);
