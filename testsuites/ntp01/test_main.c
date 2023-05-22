@@ -31,6 +31,7 @@
 
 #include <sys/stat.h>
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 
 #include <rtems/console.h>
@@ -47,6 +48,12 @@
 #include <rtems/telnetd.h>
 
 #include <tmacros.h>
+
+#define DEBUGGER 0
+#if DEBUGGER
+#include <rtems/rtems-debugger.h>
+#include <rtems/rtems-debugger-remote-tcp.h>
+#endif /* DEBUGGER */
 
 const char rtems_test_name[] = "NTP 1";
 
@@ -348,8 +355,37 @@ static const char etc_services[] =
     "ntp                123/tcp      # Network Time Protocol  [Dave_Mills] [RFC5905]\n"
     "ntp                123/udp      # Network Time Protocol  [Dave_Mills] [RFC5905]\n";
 
+static atomic_bool ntp_start;
 static int ntp_run_count;
 static rtems_id ntpd_id;
+
+static void debugger_start(void) {
+#if DEBUGGER
+  rtems_printer printer;
+  int r;
+  rtems_print_printer_fprintf(&printer, stdout);
+  r = rtems_debugger_register_tcp_remote();
+  if (r < 0) {
+    printf("error: dserver: tcp remote register: %s", strerror(errno));
+    return;
+  }
+  r = rtems_debugger_start(
+    "tcp", "1122", RTEMS_DEBUGGER_TIMEOUT, 1, &printer);
+  if (r < 0) {
+    printf("error: dserver: failed to start\n");
+    return;
+  }
+#endif /* DEBUGGER */
+}
+
+static void debugger_break(void) {
+#if DEBUGGER
+  printf("debugger: waiting ...   ");
+  fflush(stdout);
+  rtems_debugger_break(true);
+  printf("\n");
+#endif /* DEBUGGER */
+}
 
 static void setup_etc(void)
 {
@@ -375,6 +411,24 @@ static void setup_etc(void)
 
 }
 
+static void ntp_wait_until_running(void) {
+  while (!rtems_ntpd_running()) {
+    usleep(250 * 1000);
+  }
+}
+
+static void ntp_wait_until_stopped(void) {
+  while (rtems_ntpd_running()) {
+    usleep(250 * 1000);
+  }
+}
+
+static void ntp_wait_for_start(void) {
+  while (!ntp_start) {
+    usleep(250 * 1000);
+  }
+}
+
 static rtems_task ntpd_runner(
   rtems_task_argument argument
 )
@@ -390,10 +444,13 @@ static rtems_task ntpd_runner(
     };
     const int argc = ((sizeof(argv) / sizeof(argv[0])) - 1);
     int r;
-
+    ntp_wait_for_start();
     printf("ntpd starting\n");
     r = rtems_ntpd_run(argc, argv);
     printf("ntpd finished: %d\n", r);
+    if (r != 0) {
+      break;
+    }
   }
 }
 
@@ -415,6 +472,9 @@ static void run_test(void)
   sc = rtems_telnetd_start( &rtems_telnetd_config );
   rtems_test_assert( sc == RTEMS_SUCCESSFUL );
 
+  debugger_start();
+  debugger_break();
+
   sc = rtems_shell_init("SHLL", 16 * 1024, 1, CONSOLE_DEVICE_NAME,
     false, false, NULL);
   directive_failed( sc, "rtems_shell_init" );
@@ -423,7 +483,7 @@ static void run_test(void)
   sc = rtems_task_create(
     rtems_build_name( 'n', 't', 'p', 'd' ),
     10,
-    8 * 1024,
+    64 * 1024,
     RTEMS_TIMESLICE,
     RTEMS_FLOATING_POINT,
     &ntpd_id
@@ -432,7 +492,8 @@ static void run_test(void)
   sc = rtems_task_start( ntpd_id, ntpd_runner, 0 );
   directive_failed( sc, "rtems_task_start of TA1" );
 
-  sleep(1);
+  ntp_start = true;
+  ntp_wait_until_running();
 
   while (rtems_ntpd_running()) {
     sleep(2);
@@ -440,7 +501,9 @@ static void run_test(void)
     if (restart_secs == 10) {
       printf("ntpd forced stop\n");
       rtems_ntpd_stop();
-      sleep(2);
+      ntp_wait_until_stopped();
+      ntp_start = false;
+      ntp_wait_until_running();
     }
   }
   printf("ntpd: not running!\n");
