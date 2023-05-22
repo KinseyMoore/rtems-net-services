@@ -250,7 +250,7 @@ def build(bld):
               use=[net_use])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libttcp.a"])
 
-    libs = ['rtemstest']
+    libs = ['rtemstest', 'debugger']
 
     ntp_test_incl = ntp_incl + ['testsuites']
     ntp_test_sources = ['testsuites/ntp01/test_main.c', net_adapter_source]
