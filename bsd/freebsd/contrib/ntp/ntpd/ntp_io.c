@@ -3727,7 +3727,11 @@ io_handler(void)
 	 * yet to learn about anything else that is.
 	 */
 	++handler_calls;
+#if __rtems__
+	memcpy(&rdfdes, &activefds, rtems_ntpd_fds_size);
+#else /* __rtems__ */
 	rdfdes = activefds;
+#endif /* __rtems__ */
 #   if !defined(VMS) && !defined(SYS_VXWORKS) && !defined(__rtems__)
 	nfound = select(maxactivefd + 1, &rdfdes, NULL,
 			NULL, NULL);
