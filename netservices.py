@@ -182,6 +182,11 @@ def bsp_configure(conf, arch_bsp):
     if stack_count != 1:
         conf.fatal('More than one networking stack found')
 
+    conf.check_cc(lib='debugger',
+                  ldflags=['-lrtemsdefaultconfig'],
+                  uselib_store='DEBUGGER',
+                  mandatory=False)
+
     net_check_libbsd(conf)
     net_check_legacy(conf)
     net_check_lwip(conf)
@@ -250,7 +255,9 @@ def build(bld):
               use=[net_use])
     bld.install_files("${PREFIX}/" + arch_lib_path, ["libttcp.a"])
 
-    libs = ['rtemstest', 'debugger']
+    libs = ['rtemstest']
+    if 'LIB_DEBUGGER' in bld.env:
+        libs += bld.env.LIB_DEBUGGER
 
     ntp_test_incl = ntp_incl + ['testsuites']
     ntp_test_sources = ['testsuites/ntp01/test_main.c', net_adapter_source]
