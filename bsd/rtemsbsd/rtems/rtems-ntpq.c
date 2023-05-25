@@ -223,10 +223,12 @@ int rtems_ntpq_create(size_t output_buf_size) {
     alloc_size = ((alloc_size / 16) + 1) * 16;
   }
   fd_set_break = alloc_size;
-  alloc_size +=
+  rtems_ntpq_fd_set_size =
     sizeof(fd_set) * (howmany(rtems_libio_number_iops, sizeof(fd_set) * 8));
+  alloc_size += rtems_ntpq_fd_set_size;
   rtems_ntpq_output_buf = calloc(1, alloc_size);
   if (rtems_ntpq_output_buf == NULL) {
+    rtems_ntpq_fd_set_size = 0;
     rtems_ntpq_error(ENOMEM, "no memory");
     rtems_recursive_mutex_unlock(&ntpq_lock);
     return -1;
@@ -236,6 +238,7 @@ int rtems_ntpq_create(size_t output_buf_size) {
   if (rtems_ntpq_outputfp == NULL) {
     rtems_ntpq_error(errno, "buffered file pointer");
     free(rtems_ntpq_output_buf);
+    rtems_ntpq_fd_set_size = 0;
     rtems_ntpq_output_buf_size = 0;
     rtems_ntpq_output_buf = NULL;
     rtems_ntpq_fd_set = NULL;
@@ -257,6 +260,7 @@ void rtems_ntpq_destroy(void) {
       fclose(rtems_ntpq_outputfp);
     }
     free(rtems_ntpq_output_buf);
+    rtems_ntpq_fd_set_size = 0;
     rtems_ntpq_output_buf_size = 0;
     rtems_ntpq_output_buf = NULL;
     rtems_ntpq_fd_set = NULL;
@@ -449,11 +453,15 @@ int rtems_shell_ntpq_command(int argc, char **argv) {
     r = rtems_ntpq_query(argc, (const char**) argv);
   }
   if (r == 0) {
+    const char* output = rtems_ntpq_output();
+    const size_t len = strlen(output);
     printf(rtems_ntpq_output());
+    if (len > 0 && output[len - 1] != '\n') {
+      printf("\n");
+    }
   } else {
-    printf(rtems_ntpq_error_text());
+    printf("%s\n", rtems_ntpq_error_text());
   }
-  printf("\n");
   return r;
 }
 
