@@ -452,6 +452,8 @@ static rtems_task ntpd_runner(
       break;
     }
   }
+  printf("error: ntpd: task loop exiting");
+  rtems_task_delete(RTEMS_SELF);
 }
 
 static void run_test(void)
@@ -475,7 +477,7 @@ static void run_test(void)
   debugger_start();
   debugger_break();
 
-  sc = rtems_shell_init("SHLL", 16 * 1024, 1, CONSOLE_DEVICE_NAME,
+  sc = rtems_shell_init("SHLL", 32 * 1024, 1, CONSOLE_DEVICE_NAME,
     false, false, NULL);
   directive_failed( sc, "rtems_shell_init" );
   assert(sc == RTEMS_SUCCESSFUL);
@@ -586,5 +588,7 @@ static rtems_task Init( rtems_task_argument argument )
 
 #define CONFIGURE_UNLIMITED_OBJECTS
 #define CONFIGURE_UNIFIED_WORK_AREAS
+
+#define CONFIGURE_STACK_CHECKER_ENABLED
 
 #include <rtems/confdefs.h>
