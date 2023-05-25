@@ -1594,8 +1594,8 @@ static void
 rtems_ntpd_cleanup(void) {
 	rtems_ntp_peer_globals_fini();
 	rtems_ntp_control_globals_fini();
-	rtems_ntp_worker_globals_fini();
 	rtems_ntp_intres_globals_fini();
+	rtems_ntp_worker_globals_fini();
 	rtems_ntp_proto_globals_fini();
 	rtems_ntp_io_globals_fini();
 	rtems_ntp_request_globals_fini();
@@ -1638,7 +1638,6 @@ rtems_ntpd_run(int argc, char **argv)
 	rtems_mutex_unlock(&ntpd_lock);
 	r = rtems_bsd_program_call_main("ntpd", ntpdmain, argc, argv);
 	rtems_mutex_lock(&ntpd_lock);
-	rtems_ntpd_cleanup();
 	ntpd_running = false;
 	rtems_mutex_unlock(&ntpd_lock);
 	return r;
