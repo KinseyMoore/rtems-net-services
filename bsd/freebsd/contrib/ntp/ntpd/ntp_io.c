@@ -444,13 +444,18 @@ maintain_activefds(
 		FD_CLR(fd, &activefds);
 		if (maxactivefd && fd == maxactivefd) {
 #ifdef __rtems__
-			maxactivefd = 0;
+			int curr_maxactivefd = maxactivefd;
 #endif /* __rtems__ */
 			for (i = maxactivefd - 1; i >= 0; i--)
 				if (FD_ISSET(i, &activefds)) {
 					maxactivefd = i;
 					break;
 				}
+#ifdef __rtems__
+			if (curr_maxactivefd == maxactivefd) {
+				maxactivefd = 0;
+			}
+#endif /* __rtems__ */
 			INSIST(fd != maxactivefd);
 		}
 	}
