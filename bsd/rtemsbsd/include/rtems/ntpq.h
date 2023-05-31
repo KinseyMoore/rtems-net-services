@@ -36,8 +36,7 @@
 #ifndef _RTEMS_NTPQ_H
 #define _RTEMS_NTPQ_H
 
-#include <ntp_types.h>
-#include <ntpq-opts.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,8 +53,41 @@ extern "C" {
  */
 int rtems_shell_ntpq_command(int argc, char **argv);
 
+/**
+ * @brief Create the NTP query environment
+ *
+ * Call this function before making a query. It only needs to be
+ * called once for the program.
+ *
+ * @param output_buf_size Size of the output buffer to hold the query
+ *
+ * @return This function returns the result.
+ */
 int rtems_ntpq_create(size_t output_buf_size);
+
+/**
+ * @brief Destroy the NTP query environment
+ *
+ * This releases any held resources.
+ *
+ * @return This function returns the result.
+ */
 void rtems_ntpq_destroy(void);
+
+/**
+ * @brief Query the NTP service
+ *
+ * Refer to the commands the ntpq command accepts. The output if held
+ * in the output buffer. This command is not designed to run in
+ * separate threads. The single output buffer will corrupt.
+ *
+ * @param argc Argument count
+ *
+ * @param argv Argument string pointers
+ *
+ * @return This function returns the result.
+ */
+int rtems_ntpq_query(const int argc, const char** argv);
 
 int rtems_ntpq_error_code(void);
 const char* rtems_ntpq_error_text(void);
