@@ -51,6 +51,27 @@
  * be something usable on RTEMS.
  */
 
+/*
+ * We only have the BSD program main call. Do not override the
+ * following.
+ */
+#define RTEMS_BSD_PROGRAM_NO_ABORT_WRAP
+#define RTEMS_BSD_PROGRAM_NO_PRINTF_WRAP
+#define RTEMS_BSD_PROGRAM_NO_OPEN_WRAP
+#define RTEMS_BSD_PROGRAM_NO_SOCKET_WRAP
+#define RTEMS_BSD_PROGRAM_NO_CLOSE_WRAP
+#define RTEMS_BSD_PROGRAM_NO_FOPEN_WRAP
+#define RTEMS_BSD_PROGRAM_NO_FCLOSE_WRAP
+#define RTEMS_BSD_PROGRAM_NO_MALLOC_WRAP
+#define RTEMS_BSD_PROGRAM_NO_CALLOC_WRAP
+#define RTEMS_BSD_PROGRAM_NO_REALLOC_WRAP
+#define RTEMS_BSD_PROGRAM_NO_REALLOC_WRAP
+#define RTEMS_BSD_PROGRAM_NO_STRDUP_WRAP
+#define RTEMS_BSD_PROGRAM_NO_STRNDUP_WRAP
+#define RTEMS_BSD_PROGRAM_NO_VASPRINTF_WRAP
+#define RTEMS_BSD_PROGRAM_NO_ASPRINTF_WRAP
+#define RTEMS_BSD_PROGRAM_NO_FREE_WRAP
+
 #include <config.h>
 
 #include <string.h>
@@ -60,6 +81,7 @@
 
 #include <rtems.h>
 #include <rtems/thread.h>
+#include <machine/rtems-bsd-program.h>
 
 #include <rtems/ntpq.h>
 #include <ntpq.h>
@@ -108,10 +130,14 @@ char *getpass_keytype(int keytype) {
 }
 
 void rtems_ntpq_verror(int error_code, const char* format, va_list ap) {
+  size_t len = 6;
   rtems_ntpq_error_value = error_code;
   strcpy(rtems_ntpq_error_str, "ntpq: ");
-  vsnprintf(
+  len += vsnprintf(
     rtems_ntpq_error_str + 6, sizeof(rtems_ntpq_error_str) - 7, format, ap);
+  snprintf(
+    rtems_ntpq_error_str + len, sizeof(rtems_ntpq_error_str) - len - 1,
+    ": %d: %s", errno, strerror(errno));
 }
 
 void rtems_ntpq_error(int error_code, const char* format, ...) {
@@ -368,9 +394,18 @@ static int rtems_getarg(const char *str, int code, arg_v *argp) {
   return 1;
 }
 
+int rtems_ntpq_query_main(int argc, char** argv) {
+  struct xcmd* cmd = (struct xcmd*) argv[0];
+  struct parse* pcmd = (struct parse*) argv[1];
+  FILE* outputfp = (FILE*) argv[2];
+  cmd->handler(pcmd, outputfp);
+  return 0;
+}
+
 int rtems_ntpq_query(const int argc, const char** argv) {
   extern struct xcmd builtins[];
   extern struct xcmd opcmds[];
+  char* prog_main_argv[] = { NULL, NULL, NULL, NULL };
   struct parse pcmd;
   struct xcmd* cmd;
   const char* keyword;
@@ -427,7 +462,11 @@ int rtems_ntpq_query(const int argc, const char** argv) {
     }
     ++pcmd.nargs;
   }
-  cmd->handler(&pcmd, rtems_ntpq_outputfp);
+  prog_main_argv[0] = (char*) cmd;
+  prog_main_argv[1] = (char*) &pcmd;
+  prog_main_argv[2] = (char*) rtems_ntpq_outputfp;
+  (void) rtems_bsd_program_call_main(
+    "ntpq", rtems_ntpq_query_main, 3, prog_main_argv);
   rtems_recursive_mutex_unlock(&ntpq_lock);
   return 0;
 }
