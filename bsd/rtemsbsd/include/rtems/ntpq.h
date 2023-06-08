@@ -77,24 +77,25 @@ void rtems_ntpq_destroy(void);
 /**
  * @brief Query the NTP service
  *
- * Refer to the commands the ntpq command accepts. The output if held
- * in the output buffer. This command is not designed to run in
- * separate threads. The single output buffer will corrupt.
+ * Refer to the commands the ntpq command accepts. The output is placed
+ * in the provided output buffer.
  *
  * @param argc Argument count
  *
  * @param argv Argument string pointers
  *
+ * @param output Buffer to write the output into
+ *
+ * @param size Size of the putput buffer
+ *
  * @return This function returns the result.
  */
-int rtems_ntpq_query(const int argc, const char** argv);
+int rtems_ntpq_query(const int argc, const char** argv,
+		     char* output, const size_t size);
 
 int rtems_ntpq_error_code(void);
 const char* rtems_ntpq_error_text(void);
 int rtems_ntpq_create_check(void);
-const char* rtems_ntpq_output(void);
-FILE* rtems_ntpq_stdout(void);
-FILE* rtems_ntpq_stderr(void);
 
 #ifdef __cplusplus
 }

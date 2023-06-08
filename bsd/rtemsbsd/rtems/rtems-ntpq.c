@@ -102,13 +102,13 @@ static rtems_recursive_mutex ntpq_lock = RTEMS_RECURSIVE_MUTEX_INITIALIZER("ntpq
  * safe without a lot of changes and the BSD command support is not
  * fully ported to net seervices.
  */
-int rtems_ntpq_error_value;
-char rtems_ntpq_error_str[128];
 fd_set* rtems_ntpq_fd_set;
-size_t rtems_ntpq_fd_set_size;
-FILE* rtems_ntpq_outputfp;
-char* rtems_ntpq_output_buf;
-size_t rtems_ntpq_output_buf_size;
+ size_t rtems_ntpq_fd_set_size;
+static int rtems_ntpq_error_value;
+static char rtems_ntpq_error_str[128];
+static FILE* rtems_ntpq_outputfp;
+static char* rtems_ntpq_output_buf;
+static size_t rtems_ntpq_output_buf_size;
 
 /**
  * SSL support stubs
@@ -402,7 +402,8 @@ int rtems_ntpq_query_main(int argc, char** argv) {
   return 0;
 }
 
-int rtems_ntpq_query(const int argc, const char** argv) {
+int rtems_ntpq_query(
+  const int argc, const char** argv, char* output, const size_t size) {
   extern struct xcmd builtins[];
   extern struct xcmd opcmds[];
   char* prog_main_argv[] = { NULL, NULL, NULL, NULL };
@@ -412,6 +413,7 @@ int rtems_ntpq_query(const int argc, const char** argv) {
   size_t keyword_len;
   int args = argc;
   int arg;
+  memset(output, 0, size);
   rtems_recursive_mutex_lock(&ntpq_lock);
   if (!rtems_ntpq_create_check()) {
     rtems_recursive_mutex_unlock(&ntpq_lock);
@@ -467,11 +469,15 @@ int rtems_ntpq_query(const int argc, const char** argv) {
   prog_main_argv[2] = (char*) rtems_ntpq_outputfp;
   (void) rtems_bsd_program_call_main(
     "ntpq", rtems_ntpq_query_main, 3, prog_main_argv);
+  memcpy(output, rtems_ntpq_output_buf, min(size, rtems_ntpq_output_buf_size));
+  output[size - 1] = '\0';
   rtems_recursive_mutex_unlock(&ntpq_lock);
   return 0;
 }
 
 int rtems_shell_ntpq_command(int argc, char **argv) {
+  const size_t size = 2048;
+  char* output = NULL;
   int r;
   argc--;
   argv++;
@@ -489,17 +495,26 @@ int rtems_shell_ntpq_command(int argc, char **argv) {
     printf("ntpq: closed");
     r = 0;
   } else {
-    r = rtems_ntpq_query(argc, (const char**) argv);
+    output = malloc(size);
+    if (output == NULL) {
+      printf("ntpq: no memory for output\n");
+    } else {
+      r = rtems_ntpq_query(argc, (const char**) argv, output, size);
+    }
   }
   if (r == 0) {
-    const char* output = rtems_ntpq_output();
-    const size_t len = strlen(output);
-    printf(rtems_ntpq_output());
-    if (len > 0 && output[len - 1] != '\n') {
-      printf("\n");
+    if (output != NULL) {
+      const size_t len = strlen(output);
+      printf(rtems_ntpq_output());
+      if (len > 0 && output[len - 1] != '\n') {
+        printf("\n");
+      }
     }
   } else {
     printf("%s\n", rtems_ntpq_error_text());
+  }
+  if (output != NULL) {
+    free(output);
   }
   return r;
 }
